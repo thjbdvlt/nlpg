@@ -9,6 +9,7 @@ dependencies = [
     "psycopg[binary]",
     "spacy",
     "tqdm",
+    "nh3",
 ]
 
 [project.scripts]
