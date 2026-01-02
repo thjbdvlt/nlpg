@@ -4,9 +4,9 @@ from psycopg import Cursor
 
 
 SCHEMA_EAV = "eav"
-SCHEMA = "litteralement"
+SCHEMA = "postgrespacy"
 TABLE_IMPORT = "_entity"
-TABLE_ANNOTES = "litteralement._textobj"
+TABLE_ANNOTES = "postgrespacy._textobj"
 TABLE_CONFIG = "_config"
 SCHEMAS = (SCHEMA, SCHEMA_EAV)
 SCHEMA_OPTS = (SCHEMA, SCHEMA_EAV, "fk", "both")

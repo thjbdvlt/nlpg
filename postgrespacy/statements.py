@@ -1,5 +1,5 @@
 from psycopg.sql import SQL, Identifier
-from litteralement.schema import SCHEMA, SCHEMA_EAV
+from postgrespacy.schema import SCHEMA, SCHEMA_EAV
 
 
 UNANNOTATED_TEXTS = f"""

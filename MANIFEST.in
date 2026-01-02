@@ -1,1 +1,1 @@
-include litteralement/data/*.sql
+include postgrespacy/data/*.sql

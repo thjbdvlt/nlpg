@@ -136,7 +136,7 @@ def make_cli_parser():
     """Make the argument parser."""
 
     parser = argparse.ArgumentParser(
-        prog="litteralement",
+        prog="postgrespacy",
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
     parser.set_defaults(func=lambda i: None)

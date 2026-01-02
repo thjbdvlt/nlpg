@@ -44,7 +44,7 @@ opt_groups = {
     "copy-vec": [
         [["file"], pos_str],
         [["-t", "--table"], str_opt(default="vec")],
-        [["-s", "--schema"], str_opt(default="litteralement")],
+        [["-s", "--schema"], str_opt(default="postgrespacy")],
         [["-b", "--binary"], store_true],
     ],
     "schema": [
