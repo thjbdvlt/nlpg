@@ -8,14 +8,14 @@ def make_ext():
     """Make the Cython extension."""
 
     return Extension(
-        "postgrespacy.extract_tags",
-        ["./postgrespacy/extract_tags.pyx"],
+        "nlpg.extract_tags",
+        ["./nlpg/extract_tags.pyx"],
         include_dirs=[".", get_include()],
         language="c++",
     )
 
 
 setup(
-    name="postgrespacy",
+    name="nlpg",
     ext_modules=cythonize(make_ext(), language_level=3),
 )

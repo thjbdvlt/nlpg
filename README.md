@@ -1,16 +1,16 @@
-postgrespacy
+nlpg
 =============
 
-__postgrespacy__ est un schéma de base de données [PostgreSQL](https://www.postgresql.org/) pour l'analyse automatique de textes en français, conçu pour stocker les annotations produites par la librairie [spaCy](https://spacy.io/). C'est aussi une interface minimale en ligne de commande permettant de facilement ajouter des données, d'annoter les textes (avec [spaCy](https://spacy.io/)) et de placer le résultat de ces annotations dans la base de données (voir [usage](#usage), plus bas).
+__nlpg__ est un schéma de base de données [PostgreSQL](https://www.postgresql.org/) pour l'analyse automatique de textes en français, conçu pour stocker les annotations produites par la librairie [spaCy](https://spacy.io/). C'est aussi une interface minimale en ligne de commande permettant de facilement ajouter des données, d'annoter les textes (avec [spaCy](https://spacy.io/)) et de placer le résultat de ces annotations dans la base de données (voir [usage](#usage), plus bas).
 
 schémas
 -------
 
-Les tables du schéma [postgrespacy](#postgrespacy) sont destinées à recevoir les données typiquement produites lors de l'annotation automatique par des librairies de _NLP_ (_token_, _word_, _lemma_, _pos_, _dep_, _feats_, etc.). Elles sont organisées de façon à optimiser les performances et l'espace utilisé[^DatabaseNormalization].
+Les tables du schéma [nlpg](#nlpg) sont destinées à recevoir les données typiquement produites lors de l'annotation automatique par des librairies de _NLP_ (_token_, _word_, _lemma_, _pos_, _dep_, _feats_, etc.). Elles sont organisées de façon à optimiser les performances et l'espace utilisé[^DatabaseNormalization].
 
 [^DatabaseNormalization]: Voir les principes généraux de la *normalisation de base de données*: https://en.wikipedia.org/wiki/Database_normalization
 
-Un autre schéma optionnel, [eav](#eav) (qui implémente un modèle générique/[EAV](https://en.wikipedia.org/wiki/Entity-attribute-value_model) minimal) peut être ajouté au schéma `postgrespacy` pour avoir une base de données complète et flexible, mais assez sommaire. Le [modèle](https://wiki-arhn.larhra.fr/lib/exe/fetch.php?media=intro_histoire_numerique:beretta_des_sources_aux_donnees_3-8.pdf) générique dont il s'inspire, librement emprunté à Francesco Beretta[^1] (et dont je ne reprends qu'une minuscule partie) est plus complet que ce que désigne le terme [EAV](https://en.wikipedia.org/wiki/Entity-attribute-value_model) (*Entity-Attribute-Value*), puisqu'il n'implémente pas seulement une manière de décrire les propriétés des entités, mais aussi, par exemple, leurs relations.
+Un autre schéma optionnel, [eav](#eav) (qui implémente un modèle générique/[EAV](https://en.wikipedia.org/wiki/Entity-attribute-value_model) minimal) peut être ajouté au schéma `nlpg` pour avoir une base de données complète et flexible, mais assez sommaire. Le [modèle](https://wiki-arhn.larhra.fr/lib/exe/fetch.php?media=intro_histoire_numerique:beretta_des_sources_aux_donnees_3-8.pdf) générique dont il s'inspire, librement emprunté à Francesco Beretta[^1] (et dont je ne reprends qu'une minuscule partie) est plus complet que ce que désigne le terme [EAV](https://en.wikipedia.org/wiki/Entity-attribute-value_model) (*Entity-Attribute-Value*), puisqu'il n'implémente pas seulement une manière de décrire les propriétés des entités, mais aussi, par exemple, leurs relations.
 
 [^1]: Francesco Beretta, _Des sources aux données structurées_, 14 octobre 2022, CC BY-SA 4.0. [En ligne](https://wiki-arhn.larhra.fr/lib/exe/fetch.php?media=intro_histoire_numerique:beretta_des_sources_aux_donnees_3-8.pdf)
 
@@ -29,21 +29,21 @@ Le diagramme ci-dessous représente la structure de la base de données. Chaque 
 usage
 -----
 
-__postgrespacy__ est aussi une mini-interface en ligne de commande permettant de rapidement ajouter des données dans les tables à partir de fichiers JSON (ou JSONL) ou d'annoter des textes et d'insérer les annotations dans les tables (_tokens_, _lemmes_, etc.).
+__nlpg__ est aussi une mini-interface en ligne de commande permettant de rapidement ajouter des données dans les tables à partir de fichiers JSON (ou JSONL) ou d'annoter des textes et d'insérer les annotations dans les tables (_tokens_, _lemmes_, etc.).
 
 ### création de la base de données
 
-Pour construire une base de données complète, constituée du schéma __postgrespacy__ et du schéma __eav__:
+Pour construire une base de données complète, constituée du schéma __nlpg__ et du schéma __eav__:
 
 ```bash
 psql -c 'create database mydatabase'
-postgrespacy schema both -d mydatabase
+nlpg schema both -d mydatabase
 ```
 
-Pour ajouter le schéma __postgrespacy__ à une base de données existante, il faut spécifier la table qui contient les textes afin que soient générées les _foreign keys_ des tables du schéma. On spécifie cette table _via_ l'option `-t`, dont l'argument doit avoir la forme `<schema.table.primary_key>` (la colonne _primary key_ doit être de type `integer`):
+Pour ajouter le schéma __nlpg__ à une base de données existante, il faut spécifier la table qui contient les textes afin que soient générées les _foreign keys_ des tables du schéma. On spécifie cette table _via_ l'option `-t`, dont l'argument doit avoir la forme `<schema.table.primary_key>` (la colonne _primary key_ doit être de type `integer`):
 
 ```bash
-postgrespacy schema postgrespacy -t 'public.texte.id' -d myd
+nlpg schema nlpg -t 'public.texte.id' -d myd
 ```
 
 ### insertion de données (schéma EAV)
@@ -51,8 +51,8 @@ postgrespacy schema postgrespacy -t 'public.texte.id' -d myd
 Pour importer dans les tables du modèle EAV des données au format JSON ou JSONL (respectant une structure spécifique décrite plus bas):
 
 ```bash
-postgrespacy copy -d 'mydatabase' *.json
-postgrespacy copy --dbname 'mydatabase' --jsonl *.jsonl
+nlpg copy -d 'mydatabase' *.json
+nlpg copy --dbname 'mydatabase' --jsonl *.jsonl
 ```
 
 # annotation de textes
@@ -60,8 +60,8 @@ postgrespacy copy --dbname 'mydatabase' --jsonl *.jsonl
 Pour annoter des textes avec [spaCy](https://spacy.io/) et ajouter le résultat des annotations dans les tables, on utilise la commande `annotate`, qui requière deux arguments: `model` et `query`. Ce dernier doit être un fichier (ou `-` pour lire depuis `stdin`) contenant une requête SQL retournant deux colonnes: un `text` (leur contenu) et un `int` (l'`id` des textes).
 
 ```bash
-postgrespacy annotate fr_core_news_sm query.sql --dbname mydb
-postgrespacy annotate ./path/to/a/model/ - -d mydb  << EOF
+nlpg annotate fr_core_news_sm query.sql --dbname mydb
+nlpg annotate ./path/to/a/model/ - -d mydb  << EOF
 SELECT
     val, id
 FROM string
@@ -78,12 +78,12 @@ La liste complète des options est disponible *via* l'option `-h`, `--help`.
 tables
 ------
 
-### postgrespacy
+### nlpg
 
-Si la structure du schéma __postgrespacy__ n'est pas spécifique à une librairie de _NLP_[^5], elle est toutefois désignée de façon à fonctionner avec [spaCy](https://spacy.io/). La délimitation des différents objets est peut-être relativement spécifique à la langue française.
-En particulier, la table `lexeme` (le mot hors contexte, comme élément du lexique) définit un objet qui regroupe des caractéristiques attribuées par [spaCy](https://spacy.io/) aux `token`, mais qui en français ne varient pas d'un contexte à l'autre. En français, peu importe dans quel contexte on rencontrera le mot "magiques", il n'agira toujours de l'adjectif (_part-of-speech_) "magique" (_lemma_) au pluriel (_morphology_), et sa forme graphique canonique (_norm_) sera toujours "magique". Il est donc inutile d'attribuer ces quatre propriétés à chaque occurrence du mot "magique": les propriétés `lemma`, `pos`, `norm` et `morph` sont donc, dans une base de données __postgrespacy__, des propriétés des `lexemes` tandis que les `words` ont des propriétés contextuelles: `dep` (la fonction grammaticale, par exemple "obj"), `head` (noyau), ainsi que les propriétés héritées des `tokens` (`len`, `i`, `idx`), à quoi s'ajoute la référence au `lexeme` dont ils sont une instance. L'ensemble des ligne de la table `word` constitue donc le _discours_ (les mots réelles) tandis que l'ensemble des lignes de la table `lexeme` constitue le _lexique_[^6] (les mots possibles).
+Si la structure du schéma __nlpg__ n'est pas spécifique à une librairie de _NLP_[^5], elle est toutefois désignée de façon à fonctionner avec [spaCy](https://spacy.io/). La délimitation des différents objets est peut-être relativement spécifique à la langue française.
+En particulier, la table `lexeme` (le mot hors contexte, comme élément du lexique) définit un objet qui regroupe des caractéristiques attribuées par [spaCy](https://spacy.io/) aux `token`, mais qui en français ne varient pas d'un contexte à l'autre. En français, peu importe dans quel contexte on rencontrera le mot "magiques", il n'agira toujours de l'adjectif (_part-of-speech_) "magique" (_lemma_) au pluriel (_morphology_), et sa forme graphique canonique (_norm_) sera toujours "magique". Il est donc inutile d'attribuer ces quatre propriétés à chaque occurrence du mot "magique": les propriétés `lemma`, `pos`, `norm` et `morph` sont donc, dans une base de données __nlpg__, des propriétés des `lexemes` tandis que les `words` ont des propriétés contextuelles: `dep` (la fonction grammaticale, par exemple "obj"), `head` (noyau), ainsi que les propriétés héritées des `tokens` (`len`, `i`, `idx`), à quoi s'ajoute la référence au `lexeme` dont ils sont une instance. L'ensemble des ligne de la table `word` constitue donc le _discours_ (les mots réelles) tandis que l'ensemble des lignes de la table `lexeme` constitue le _lexique_[^6] (les mots possibles).
 
-Les mots (table *word*) eux-mêmes, par ailleurs, sont également un ajout par rapport aux objets utilisés par [spaCy](https://spacy.io/) qui ne différencie pas les différents types de [_tokens_](https://spacy.io/api/token). Mais, il n'est pas très intéressent d'attribuer des _lemmes_ à des signes de ponctuation, à des urls, à des _emoticons_ ou des chiffres, ni à leur associer une _analyse morphologique_ car les chiffres ne sont pas _au pluriel_ ni les urls fléchies. Ces objets textuels sont donc, dans une base de données __postgrespacy__, des __tokens__ mais pas des mots, ils n'ont pas de fonction grammaticale (*dep*) ni de noyau (*head*), ni non plus de lexème (ce qui est en revanche plus légitime à mon avis). De cette façon, le lexique n'est pas pollué par des nombres, des dates ou des emails (en nombre virtuellement infini).
+Les mots (table *word*) eux-mêmes, par ailleurs, sont également un ajout par rapport aux objets utilisés par [spaCy](https://spacy.io/) qui ne différencie pas les différents types de [_tokens_](https://spacy.io/api/token). Mais, il n'est pas très intéressent d'attribuer des _lemmes_ à des signes de ponctuation, à des urls, à des _emoticons_ ou des chiffres, ni à leur associer une _analyse morphologique_ car les chiffres ne sont pas _au pluriel_ ni les urls fléchies. Ces objets textuels sont donc, dans une base de données __nlpg__, des __tokens__ mais pas des mots, ils n'ont pas de fonction grammaticale (*dep*) ni de noyau (*head*), ni non plus de lexème (ce qui est en revanche plus légitime à mon avis). De cette façon, le lexique n'est pas pollué par des nombres, des dates ou des emails (en nombre virtuellement infini).
 
 Lors de l'annotation de textes avec la commande `annotate`, des __vues__ sont automatiquement générées. Leurs noms sont inspirés par les attributs des `Tokens` de spaCy: `sent_`, `word_`, `lexeme_`.
 
@@ -139,7 +139,7 @@ Une exception concerne la table d'attribut `xml`. Y seront ajouté les propriét
 L'importation se fait à l'aide de la commande `copy`. Tous les arguments positionnels sont traités comme des fichiers à importer:
 
 ```bash
-postgrespacy copy -d mydatabase data1.json data2.json ../*.json
+nlpg copy -d mydatabase data1.json data2.json ../*.json
 ```
 
 # concordance

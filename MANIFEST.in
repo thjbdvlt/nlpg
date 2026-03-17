@@ -1,1 +1,1 @@
-include postgrespacy/data/*.sql
+include nlpg/data/*.sql

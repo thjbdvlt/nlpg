@@ -1,5 +1,5 @@
 [project]
-name = "postgrespacy"
+name = "nlpg"
 authors = [{name="thjbdvlt"}]
 version = "0.1.0"
 description = "base de données postgresql pour l'analyse de textes en français."
@@ -13,10 +13,10 @@ dependencies = [
 ]
 
 [project.scripts]
-postgrespacy = "postgrespacy.__main__:main"
+nlpg = "nlpg.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/thjbdvlt/postgrespacy"
+Homepage = "https://github.com/thjbdvlt/nlpg"
 
 [tool.setuptools]
 py-modules = ["solipcysme"]
