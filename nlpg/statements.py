@@ -1,15 +1,4 @@
 from psycopg.sql import SQL, Identifier
-from nlpg.schema import SCHEMA, SCHEMA_EAV
-
-
-UNANNOTATED_TEXTS = f"""
-with unannotated as (
-    select t.id from {SCHEMA_EAV}.string t
-    except
-    select distinct s.string from {SCHEMA}.seg s
-) select t.val, t.id from {SCHEMA_EAV}.string t
-join unannotated u on u.id = t.id;
-"""
 
 
 def qualify(table):
