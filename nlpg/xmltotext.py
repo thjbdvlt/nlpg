@@ -22,15 +22,11 @@ def tags_to_xtag(conn: Connection):
         select type, entity, val from {xml}
         join x using (entity, type)
     """).format(xml=xml_table, string=string_table)
-    stmt_copy_tags = (
-        "copy {xtag} (sid, idxxml, idxtext, len, s) from stdin"
-    )
+    stmt_copy_tags = "copy {xtag} (sid, idxxml, idxtext, len, s) from stdin"
     cur_get = conn.cursor(row_factory=namedtuple_row)
     cur_send = conn.cursor(row_factory=namedtuple_row)
     cur_get.execute(stmt_get)
-    with cur_send.copy(
-        SQL(stmt_copy_tags).format(xtag=xtag_table)
-    ) as copy:
+    with cur_send.copy(SQL(stmt_copy_tags).format(xtag=xtag_table)) as copy:
         for i in tqdm.tqdm(cur_get):
             idx, tags, text = extract_tags(i.val)
             for (idxtext, idxxml, length), s in zip(idx, tags):

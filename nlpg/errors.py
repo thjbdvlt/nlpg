@@ -8,11 +8,7 @@ class InvalidRowType(ValueError):
         self.required = required
         self.received = received
         if required and received:
-            self.message = (
-                f"Required: {str(required)}. Got: {str(received)}"
-            )
+            self.message = f"Required: {str(required)}. Got: {str(received)}"
         else:
-            self.message = (
-                "Wrong types in rows returned by `Cursor.execute(...)`."
-            )
+            self.message = "Wrong types in rows returned by `Cursor.execute(...)`."
         super().__init__(self.message)

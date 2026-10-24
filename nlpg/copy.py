@@ -11,9 +11,7 @@ from .schema import SCHEMA_EAV, TABLE_IMPORT
 from .xmltotext import tags_to_xtag
 
 
-def _copy_from_json(
-    copy: Copy, files: Iterator, dynamic_ncols: bool = False
-) -> None:
+def _copy_from_json(copy: Copy, files: Iterator, dynamic_ncols: bool = False) -> None:
     """Copy from JSON files."""
 
     for filepath in tqdm.tqdm(files, dynamic_ncols=dynamic_ncols):
@@ -24,9 +22,7 @@ def _copy_from_json(
                 copy.write_row((json.dumps(obj, ensure_ascii=False),))
 
 
-def _copy_from_json_l(
-    copy: Copy, files: Iterator, dynamic_ncols: bool = False
-) -> None:
+def _copy_from_json_l(copy: Copy, files: Iterator, dynamic_ncols: bool = False) -> None:
     """Copy from JSONL files (one JSON object per line)."""
 
     for filepath in tqdm.tqdm(files, dynamic_ncols=dynamic_ncols):

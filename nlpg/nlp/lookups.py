@@ -20,21 +20,15 @@ def feature_to_column_names(labels: list[dict], pos_feat: str) -> dict:
     return columns
 
 
-def update_morph_table(
-    cur: Cursor, labels: list, pos_feat: str
-) -> None:
+def update_morph_table(cur: Cursor, labels: list, pos_feat: str) -> None:
     """SQLize the FEATS morphological analysis."""
 
     columns = feature_to_column_names(labels, pos_feat)
-    stmt_add_col = SQL(
-        "alter table morph add column if not exists {} text;"
-    )
+    stmt_add_col = SQL("alter table morph add column if not exists {} text;")
     stmt_update = SQL("update morph set {} = lower(trim(j ->> %s))")
     for colname in columns:
         cur.execute(stmt_add_col.format(Identifier(colname)))
-        cur.execute(
-            stmt_update.format(Identifier(colname)), [columns[colname]]
-        )
+        cur.execute(stmt_update.format(Identifier(colname)), [columns[colname]])
 
 
 def insert_select_lookup(
@@ -69,9 +63,7 @@ def insert_select_lookup(
     return {labels[i]: lookup_db[i] for i in labels}
 
 
-def get_lookup_dep(
-    cur: Cursor, nlp: Language, pipename: str, *args
-) -> dict:
+def get_lookup_dep(cur: Cursor, nlp: Language, pipename: str, *args) -> dict:
     """Get a Lookup {hash: primary key}.
 
     Note 1: The SQL statement must returns two columns (label, id).
@@ -85,9 +77,7 @@ def get_lookup_dep(
     return insert_select_lookup(cur, labels, "dep", "id", "name")
 
 
-def get_lookup_feats(
-    cur: Cursor, nlp: Language, pipename: str, *args
-) -> dict:
+def get_lookup_feats(cur: Cursor, nlp: Language, pipename: str, *args) -> dict:
     """Get a Lookup (dict) for Universal FEATS."""
 
     pipe = nlp.get_pipe(pipename)
@@ -100,9 +90,7 @@ def get_lookup_feats(
     # get label IDs
     pos_pfx = pos_feat + field_sep
     labels = [
-        feats_sep.join(
-            [i for i in f.split(feats_sep) if not i.startswith(pos_pfx)]
-        )
+        feats_sep.join([i for i in f.split(feats_sep) if not i.startswith(pos_pfx)])
         for f in labels
     ]
 

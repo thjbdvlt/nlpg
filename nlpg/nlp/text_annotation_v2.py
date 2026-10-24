@@ -1,4 +1,3 @@
-import json
 from collections import namedtuple
 from typing import Iterator
 
@@ -12,22 +11,20 @@ from ..errors import InvalidRowType
 from ..schema import TABLE_ANNOTES
 from ..statements import make_copy_stmt
 from ..util import check_row_types, make_log_func_tqdm
-from .lookups import get_lookup_dep, get_lookup_feats, get_lookup_pos
+from .lookups import get_lookup_dep, get_lookup_pos
 
 TYPEID_WORD = 1
 TYPEID_NONWORD = 0
 TYPEID_SENT = -1
-TYPEID_PARAGRAPH = -2
 # TODO:
-# -3    span
-# -4    ent
+# -2    span
+# -3    ent
 # ...
 
 RowToken = namedtuple(
     "rowtoken",
     [
         "text_id",
-        "par_i",
         "sent_i",
         "type",
         "i",
@@ -59,19 +56,16 @@ def token_sent_i(doc: Doc) -> Iterator[int]:
             yield n
 
 
-def get_sents(
-    text_id: int, par_i: int, par_idx: int, doc: Doc
-) -> Iterator[RowToken]:
+def get_sents(text_id: int, doc: Doc) -> Iterator[RowToken]:
     """Get a Tuple (RowToken) for each Sentence."""
 
     for sent_i, i in enumerate(doc.sents, 1):
         yield RowToken(
             text_id=text_id,
-            par_i=par_i,
             sent_i=sent_i,
             type=TYPEID_SENT,
             i=sent_i,
-            idx=par_idx + i.start_char + 1,
+            idx=i.start_char + 1,
             len=i.end_char - i.start_char,
             s=None,
             tspace=0,
@@ -87,8 +81,6 @@ def get_sents(
 
 def get_tokens(
     text_id: int,
-    pid: int,
-    pidx: int,
     doc: Doc,
     lookup_pos: dict,
     lookup_feats: dict,
@@ -97,12 +89,11 @@ def get_tokens(
     """Get a Tuple for each Token in a Doc."""
 
     for sent, token in zip(token_sent_i(doc), doc):
-        idx = pidx + token.idx + 1
+        idx = token.idx + 1
         i = token.i + 1
         yield (
             RowToken(
                 text_id=text_id,
-                par_i=pid,
                 sent_i=sent,
                 type=TYPEID_WORD,
                 i=i,
@@ -124,7 +115,6 @@ def get_tokens(
             if token._.isword
             else RowToken(
                 text_id=text_id,
-                par_i=pid,
                 sent_i=sent,
                 type=TYPEID_NONWORD,
                 i=i,
@@ -145,57 +135,16 @@ def get_tokens(
 
 def doc_to_row(
     text_id: int,
-    pid: int,
-    pidx: int,
-    plen: int,
     doc: Doc,
     lookup_pos: dict,
     lookup_feats: dict,
     lookup_dep: dict,
 ) -> Iterator[RowToken]:
     """Produce Row to be inserted in the database from a Doc."""
-    for i in get_tokens(
-        text_id, pid, pidx, doc, lookup_pos, lookup_feats, lookup_dep
-    ):
+    for i in get_tokens(text_id, doc, lookup_pos, lookup_feats, lookup_dep):
         yield i
-    for i in get_sents(text_id, pid, pidx, doc):
+    for i in get_sents(text_id, doc):
         yield i
-    yield RowToken(
-        text_id=text_id,
-        par_i=pid,
-        sent_i=None,
-        type=TYPEID_PARAGRAPH,
-        i=pid,
-        idx=pidx + 1,
-        len=plen,
-        s=None,
-        tspace=0,
-        norm=None,
-        morph=None,
-        pos=None,
-        head=None,
-        dep=None,
-        userdata=None,
-    )
-    # TODO: spans
-    # TODO: ents
-
-
-def split_texts_into_paragraphs(
-    texts: Iterator[tuple], paragraph_delimiter: str
-) -> Iterator[tuple[str, tuple[int, int, int, bool]]]:
-    """Split a text into paragraphs, tracking character indexing."""
-    for text, did in texts:
-        pars = text.split(paragraph_delimiter)
-        n_pars = len(pars)
-        pidx = 0
-        for pid, p in enumerate(pars, 1):
-            plen = len(p)
-            new = True if pid == 1 else False
-            yield p, (did, pid, pidx, plen, new)
-            pidx += plen
-            if pid < n_pars:
-                pidx += 2
 
 
 def annotate(
@@ -208,7 +157,6 @@ def annotate(
     dynamic_ncols: bool = False,
     batch_size: int = 1000,
     n_process: int = 1,
-    paragraph_delimiter: str = "\n\n",
     **kwargs,
 ):
     """Process texts from the database and send annotations back."""
@@ -225,10 +173,8 @@ def annotate(
     if not check_row_types(cur_fetch, ok_types):
         raise InvalidRowType(cur_fetch, ok_types)
 
-    texts = split_texts_into_paragraphs(cur_fetch, paragraph_delimiter)
-
     docs = nlp.pipe(
-        texts=texts,
+        texts=cur_fetch,
         as_tuples=True,
         batch_size=batch_size,
         n_process=n_process,
@@ -239,21 +185,17 @@ def annotate(
         """Annote a few texts and put outputs into the database."""
         n = 0
         with cur_send.copy(stmt_send) as copy:
-            for doc, (text_id, pid, pidx, plen, new) in docs:
+            for doc, text_id in docs:
                 for row in doc_to_row(
                     text_id,
-                    pid,
-                    pidx,
-                    plen,
                     doc,
                     l_pos,
                     {},
                     l_dep,
                 ):
                     copy.write_row(row)
-                if new:
-                    pinfo.update(1)
                 n += 1
+                pinfo.update(1)
                 if n == batch_size_insert:
                     return True
             return False

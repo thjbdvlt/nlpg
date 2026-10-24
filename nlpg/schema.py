@@ -17,15 +17,11 @@ def get(filename: str) -> str:
     return pkgutil.get_data(__name__, f"data/{filename}.sql").decode()
 
 
-def make_foreign_key(
-    cur: Cursor, text: str = "eav.string.id,val"
-) -> str:
+def make_foreign_key(cur: Cursor, text: str = "eav.string.id,val") -> str:
     """Generate the foreign keys from tables `sent`, `span`, `seg` to the table containing textual data. (e.g. `eav.string`)."""
     fk = text.strip().split(".")
     if not len(fk) == 3:
-        raise ValueError(
-            "couldn't parse: ", text, "\n\n(SCHEMA.TABLE.PK,VAL)"
-        )
+        raise ValueError("couldn't parse: ", text, "\n\n(SCHEMA.TABLE.PK,VAL)")
     schema, table, pk = fk
     pk, val = pk.split(",")
     stmt_config = SQL("select {}._set_config(%s, %s)")
@@ -41,8 +37,7 @@ def make_foreign_key(
         "ALTER TABLE ONLY {}\n    "
         "ADD CONSTRAINT {} FOREIGN KEY (string) REFERENCES {} ({})"
     )
-    # for i in ["sent", "seg", "span"]:
-    for i in ["par", "seg", "span"]:
+    for i in ["span"]:
         constraint_name = Identifier(f"{i}_string_fk")
         qualified_i = Identifier(SCHEMA, i)
         stmt = stmt_base.format(

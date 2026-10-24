@@ -34,9 +34,7 @@ def check_row_types(
 def roundup(a: float) -> int:
     """Round up an `int`."""
     if a < 0.0:
-        raise ValueError(
-            "Function `roundup` must be called only on positive numbers."
-        )
+        raise ValueError("Function `roundup` must be called only on positive numbers.")
     return int(a) + ((int(a) - a) != 0)
 
 

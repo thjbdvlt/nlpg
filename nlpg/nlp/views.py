@@ -2,7 +2,6 @@ from psycopg import Cursor
 from psycopg.sql import SQL, Identifier
 
 from ..schema import SCHEMA
-from ..util import get_config_value
 
 
 def get_morph_features_list(cur: Cursor) -> SQL:
@@ -16,9 +15,7 @@ def get_morph_features_list(cur: Cursor) -> SQL:
     return morph_cols
 
 
-def create_view_morph_as_columns(
-    cur: Cursor, viewname: str, stmt: SQL
-) -> None:
+def create_view_morph_as_columns(cur: Cursor, viewname: str, stmt: SQL) -> None:
     """Dynamically create a view with morphological features as columns."""
 
     viewname = Identifier(SCHEMA, viewname)
@@ -28,8 +25,6 @@ def create_view_morph_as_columns(
 
 def make_views(cur: Cursor) -> None:
     """Make the views word_, lexeme_ and sent_."""
-    make_view_par(cur)
-    make_view_sent(cur)
     create_view_morph_as_columns(
         cur,
         "word_",
@@ -37,7 +32,6 @@ def make_views(cur: Cursor) -> None:
 select
     sent.string,
     sent.id as sent,
-    sent.par,
     word.i as i,
     word.s as s,
     word.tspace as tspace,
@@ -66,7 +60,6 @@ from
 select
     sent.string,
     sent.id as sent,
-    sent.par,
     word.i as i,
     word.s as s,
     word.tspace as tspace,
@@ -88,7 +81,6 @@ union
 select
     sent.string,
     sent.id as sent,
-    sent.par,
     token.i as i,
     token.s as s,
     token.tspace as tspace,
@@ -123,58 +115,6 @@ FROM
     )
 
     make_function_concordances(cur)
-
-
-def make_view_sent(cur: Cursor) -> None:
-    """Make the view "sent_"."""
-
-    schema = get_config_value(cur, "string_schema")
-    table = get_config_value(cur, "string_table")
-    col_id = get_config_value(cur, "string_id")
-    col_val = get_config_value(cur, "string_val")
-
-    stmt = SQL("""CREATE OR REPLACE VIEW {viewname} AS
-SELECT
-    sent.string,
-    sent.par,
-    sent.id,
-    sent.i,
-    substring({column_val}, sent.idx, sent.len) as s
-from sent
-    join {table_name} on {column_id} = sent.string;
-    """).format(
-        viewname=Identifier(SCHEMA, "sent_"),
-        column_val=Identifier(table, col_val),
-        table_name=Identifier(schema, table),
-        column_id=Identifier(table, col_id),
-    )
-    cur.execute(stmt)
-
-
-def make_view_par(cur: Cursor) -> None:
-    """Make the view 'par_'."""
-    schema = get_config_value(cur, "string_schema")
-    table = get_config_value(cur, "string_table")
-    col_id = get_config_value(cur, "string_id")
-    col_val = get_config_value(cur, "string_val")
-    stmt = SQL("""CREATE OR REPLACE VIEW {viewname} AS
-SELECT
-    s.id as string,
-    {t}.idx,
-    {t}.len,
-    {t}.id,
-    {t}.i,
-    substring(s.{column_val}, {t}.idx, {t}.len) as text
-from {t}
-    join {table_name} as s on s.{column_id} = {t}.string;
-    """).format(
-        viewname=Identifier(SCHEMA, "par_"),
-        t=Identifier(SCHEMA, "par"),
-        column_val=Identifier(col_val),
-        table_name=Identifier(schema, table),
-        column_id=Identifier(col_id),
-    )
-    cur.execute(stmt)
 
 
 def make_function_concordances(cur: Cursor) -> None:

@@ -46,9 +46,7 @@ helper = {
 
 def add(parser: ArgumentParser, opts: list[list]) -> None:
     """Add an option to a parser."""
-    parser.add_argument(
-        *opts[0], **opts[1], help=helper.get(opts[0][-1])
-    )
+    parser.add_argument(*opts[0], **opts[1], help=helper.get(opts[0][-1]))
 
 
 def name_from_long(opt: list[str]) -> str:

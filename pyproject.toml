@@ -30,7 +30,7 @@ find = {}
 
 [tool.ruff]
 exclude = []
-line-length = 72
+line-length = 90
 
 [tool.ruff.format]
 quote-style = "double"

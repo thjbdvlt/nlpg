@@ -1,179 +1,102 @@
 # nlpg
 
-__nlpg__ est un schéma de base de données [PostgreSQL](https://www.postgresql.org/) pour l'analyse automatique de textes en français, conçu pour stocker les annotations produites par la librairie [spaCy](https://spacy.io/). C'est aussi une interface minimale en ligne de commande permettant de facilement ajouter des données, d'annoter les textes (avec [spaCy](https://spacy.io/)) et de placer le résultat de ces annotations dans la base de données (voir [usage](#usage), plus bas).
+__nlpg__ is *a)* a [PostgreSQL](https://www.postgresql.org/) database schema designed to store the annotations produced by [spaCy](https://spacy.io/) and *b)* a command line interface to interact (e.g. insert or annotate) with the database (see Usage below).
 
-## Schémas
+## Schemas
 
-Les tables du schéma [nlpg](#nlpg) sont destinées à recevoir les données typiquement produites lors de l'annotation automatique par des librairies de _NLP_ (_token_, _word_, _lemma_, _pos_, _dep_, _feats_, etc.). Elles sont organisées de façon à optimiser les performances et l'espace utilisé[^DatabaseNormalization].
+The tables in the [nlpg](#nlpg) schema are designed to receive data produced by spaCy (token, word, lemmatizer, part-of-speech, dependency, morphology, etc.). They are organized to optimize performance and space usage[^DatabaseNormalization].
+__nlpg__ provides an optional schema [eav](#eav) that implements a minimal and generic [EAV](https://en.wikipedia.org/wiki/Entity-attribute-value_model) model. This results in a complete and flexible (but rather simple) database.
+Together, these two schemas form a hybrid EAV model, but they are independent.
 
-[^DatabaseNormalization]: Voir les principes généraux de la *normalisation de base de données*: https://en.wikipedia.org/wiki/Database_normalization
+[^DatabaseNormalization]: See the general principles of [database normalization](https://en.wikipedia.org/wiki/Database_normalization).
 
-Un autre schéma optionnel, [eav](#eav) (qui implémente un modèle générique/[EAV](https://en.wikipedia.org/wiki/Entity-attribute-value_model) minimal) peut être ajouté au schéma `nlpg` pour avoir une base de données complète et flexible, mais assez sommaire. Le [modèle](https://wiki-arhn.larhra.fr/lib/exe/fetch.php?media=intro_histoire_numerique:beretta_des_sources_aux_donnees_3-8.pdf) générique dont il s'inspire, librement emprunté à Francesco Beretta[^1] (et dont je ne reprends qu'une minuscule partie) est plus complet que ce que désigne le terme [EAV](https://en.wikipedia.org/wiki/Entity-attribute-value_model) (*Entity-Attribute-Value*), puisqu'il n'implémente pas seulement une manière de décrire les propriétés des entités, mais aussi, par exemple, leurs relations.
+The diagram below shows the structure of the database. Each rectangle represents a table. The dashed arrows represent [inheritance](https://www.postgresql.org/docs/current/tutorial-inheritance.html) between tables. For example, the word table inherits the columns `sent`, `i`, `idx`, and `len` from the `token` table (see the [spaCy](https://spacy.io/api/token#attributes) documentation for these properties). Conceptually, the inheritance relationship corresponds to the relationship *A is a subclass of B*. The solid arrows represent *foreign keys*. Lines beginning with an underscore also indicate foreign keys: the values of the relevant columns are always `integer` or, for optimization reasons, `smallint`[^SmallInt].
 
-[^1]: Francesco Beretta, _Des sources aux données structurées_, 14 octobre 2022, CC BY-SA 4.0. [En ligne](https://wiki-arhn.larhra.fr/lib/exe/fetch.php?media=intro_histoire_numerique:beretta_des_sources_aux_donnees_3-8.pdf)
+[^SmallInt]: It is highly unlikely that certain tables will exceed a thousand lines. Typically, part-of-speech tags and dependency labels, stored in the tables `pos` and `dep`.
 
-Ensemble, ces deux schémas constituent donc un modèle EAV hybride, mais ils sont indépendants.
+(For a detailed description of the tables, see [below](#tables).)
 
-Le diagramme ci-dessous représente la structure de la base de données. Chaque rectangle représente une table. Les flèches traitillées représentent les [héritages](https://www.postgresql.org/docs/current/tutorial-inheritance.html) entre tables. La table `word` hérite par exemple de la table `token` les colonnes `sent`, `i`, `idx` et `len`[^4] (voir la documentation de [spaCy](https://spacy.io/api/token#attributes) pour ces propriétés). D'un point de vue conceptuelle, la relation d'héritage correspond à la relation _A est une sous-classe de B_[^7]. Les autres flèches (pleines) représentent des *foreign keys*. Les lignes commençant par `_` indiquent, elles aussi des *foreign keys*: la valeur des colonnes en question est toujours `integer` ou, pour des raisons d'optimisation, `smallint`, car il est très improbable pour certaines tables de dépasser le millier de lignes (typiquement: les *part-of-speech tags* et *dependency labels*, respectivement stockés dans les tables __nature__ et __fonction__).
-
-(Pour une description et détaillées des tables, voir [plus bas](#tables).)
-
-![](./img/tables.dot.png)
-
-[^4]: Les _foreign keys_ ne se transmettent pas par héritage; elles sont systématiquement ajoutées dans la définition du schéma, ainsi que toutes les autres contraintes.
-
-[^7]: Exemple typique, extrait de la documentation de PostgreSQL: villes et capitales; la table capitale _hérite_ de la table _ville_ (les capitales sont un type spécifique de ville), auquel est ajoutée des propriétés ou contraintes (ex. "état").
+![](./img/diagram.dot.png)
 
 ## Usage
 
-__nlpg__ est aussi une mini-interface en ligne de commande permettant de rapidement ajouter des données dans les tables à partir de fichiers JSON (ou JSONL) ou d'annoter des textes et d'insérer les annotations dans les tables (_tokens_, _lemmes_, etc.).
+__nlpg__ is also a mini command-line interface that allows you to quickly add data to tables from JSON (or JSONL) files, or annotate texts and insert the annotations into tables (tokens, lemmas, etc.).
 
-### Création de la base de données
-
-Pour construire une base de données complète, constituée du schéma __nlpg__ et du schéma __eav__:
+To build a complete database with both __nlpg__ and __eav__ schemas:
 
 ```bash
 psql -c 'create database mydatabase'
 nlpg schema both -d mydatabase
 ```
 
-Pour ajouter le schéma __nlpg__ à une base de données existante, il faut spécifier la table qui contient les textes afin que soient générées les _foreign keys_ des tables du schéma. On spécifie cette table _via_ l'option `-t`, dont l'argument doit avoir la forme `<schema.table.primary_key>` (la colonne _primary key_ doit être de type `integer`):
+To add the __nlpg__ schema to an existing database, specify the table that contains the texts so that the foreign keys of the tables in the schema are generated. This table is specified via the `-t` option, whose argument must be in the form of `<schema.table.primary_key>` (the primary key column must be of type integer).
 
 ```bash
-nlpg schema nlpg -t 'public.texte.id' -d myd
+nlpg schema nlpg -t 'public.text.id' -d myd
 ```
 
-### Insertion de données (schéma EAV)
-
-Pour importer dans les tables du modèle EAV des données au format JSON ou JSONL (respectant une structure spécifique décrite plus bas):
+To import data in the EAV model tables in JSON or JSONL format (respecting a specific structure described below):
 
 ```bash
 nlpg copy -d 'mydatabase' *.json
 nlpg copy --dbname 'mydatabase' --jsonl *.jsonl
 ```
 
-### Annotation de textes
-
-Pour annoter des textes avec [spaCy](https://spacy.io/) et ajouter le résultat des annotations dans les tables, on utilise la commande `annotate`, qui requière deux arguments: `model` et `query`. Ce dernier doit être un fichier (ou `-` pour lire depuis `stdin`) contenant une requête SQL retournant deux colonnes: un `text` (leur contenu) et un `int` (l'`id` des textes).
+To annotate texts with spaCy and add the annotation results to tables, use the command `annotate`, which requires two arguments: `model` et `query_file`. The latter must be a filepath (or `-` to read from stdin) containing a SQL query that returns two columns: a text (their content) and an int (the id of the texts).
 
 ```bash
-nlpg annotate fr_core_news_sm query.sql --dbname mydb
-nlpg annotate ./path/to/a/model/ - -d mydb  << EOF
+nlpg annotate en_core_news_sm query.sql --dbname mydb
+nlpg annotate ./path/to/my/model/ - -d mydb  << EOF
 SELECT
     val, id
 FROM string
 EOF
 ```
 
-La distinction entre les *mots* et les autres *tokens* se fait en utilisant l'attribut `Token._.isword`. Par défault, tous les *tokens* seront considérés comme des mots. Si le pipeline utilisé définit une extension `Token._.isword`, celle-ci sera utilisée pour faire la distinction. L'option `-w`/`--isword` permet également de passer une fonction, laquelle doit être enregistrée le [registry misc](https://spacy.io/api/top-level#registry) de spaCy.
+The distinction between words and other tokens is made using the attribute `Token._.isword`. By default, all tokens will be considered words. If the used pipeline defines an extension of the form `Token._.isword`, it will be used to make the distinction. The `-w`/`--isword` option also allows you to pass a function, which must be registered in the [spaCy registry misc](https://spacy.io/api/top-level#registry).
 
-### Options
+## EAV
 
-La liste complète des options est disponible *via* l'option `-h`, `--help`.
+The __eav__ schema has two levels. The first level concerns the ontology and consists of object classes (e.g., "person"), property types (e.g., "name"), and relationship types (e.g., "knows"). The second level concerns individuals (who constitute the world): objects themselves (e.g., a person), instances of relations (e.g., a relationship between two particular people), and instances of properties (e.g., a person's name).
 
-### Tables
+- The __entity__ table groups things in the world: people, places, physical objects, ideas, or anything else that can be designated and linked to other things. Its columns are reduced to a minimum: an `id` that allows it to be referenced and a `class` that defines its nature.
+- The table __relation__ establishes a relationship between two entities (subject and object, __sub__ and __obj__).
+- The __attribute__ table allows you to assign properties to entities. A property may optionally have a value, and this value may have different datatypes.
 
-#### nlpg
+The __string__ table links the two schemas of the database. Like the tables __attr_int__, and __attr_float__, it inherits from the table __attribute__. However, it also has a column called `id` that is referenced by the tables __par__, __sent__, and __span__.
 
-Si la structure du schéma __nlpg__ n'est pas spécifique à une librairie de NLP, elle est toutefois désignée de façon à fonctionner avec [spaCy](https://spacy.io/). La délimitation des différents objets est peut-être relativement spécifique à la langue française.
-En particulier, la table `lexeme` (le mot hors contexte, comme élément du lexique) définit un objet qui regroupe des caractéristiques attribuées par [spaCy](https://spacy.io/) aux `token`s, mais qui en français ne varient pas d'un contexte à l'autre. En français, peu importe dans quel contexte on rencontrera le mot "magiques", il n'agira toujours de l'adjectif (_part-of-speech_) "magique" (_lemma_) au pluriel (_morphology_), et sa forme graphique canonique (_norm_) sera toujours "magique". Il est donc inutile d'attribuer ces quatre propriétés à chaque occurrence du mot "magique": les propriétés `lemma`, `pos`, `norm` et `morph` sont donc, dans une base de données __nlpg__, des propriétés des `lexemes` tandis que les `words` ont des propriétés contextuelles: `dep` (la fonction grammaticale, par exemple "obj"), `head` (noyau), ainsi que les propriétés héritées des `tokens` (`len`, `i`, `idx`), à quoi s'ajoute la référence au `lexeme` dont ils sont une instance. L'ensemble des lignes de la table `word` constitue donc le _discours_ (les mots réels) tandis que l'ensemble des lignes de la table `lexeme` constitue le _lexique_[^6] (les mots possibles).
+## Import JSON data
 
-Les mots (table *word*) eux-mêmes, par ailleurs, sont également un ajout par rapport aux objets utilisés par [spaCy](https://spacy.io/) qui ne différencie pas les différents types de [_tokens_](https://spacy.io/api/token). Mais, il n'est pas très intéressant d'attribuer des _lemmes_ à des signes de ponctuation, à des urls, à des _emoticons_ ou des chiffres, ni à leur associer une _analyse morphologique_, car les chiffres ne sont pas _au pluriel_ ni les urls fléchies. Ces objets textuels sont donc, dans une base de données __nlpg__, des __tokens__ mais pas des mots, ils n'ont pas de fonction grammaticale (*dep*) ni de noyau (*head*), ni non plus de lexème (ce qui est en revanche plus légitime à mon avis). De cette façon, le lexique n'est pas pollué par des nombres, des dates ou des emails (en nombre virtuellement infini).
-
-Lors de l'annotation de textes avec la commande `annotate`, des __vues__ sont automatiquement générées. Leurs noms sont inspirés par les attributs des `Tokens` de spaCy: `sent_`, `word_`, `lexeme_`.
-
-- La vue `sent_` contient les attributs de la table `sent` (le numéro de la phrase dans le texte, `i`; la position de son premier caractère, `idx`; l'id du texte dont elle fait partie, `string`) et ajoute le contenu textuel de la phrase (`s`), qui ne fait pas partie de la table `sent` pour éviter de dupliquer des données textuelles (et est, dans la vue, simplement récupéré *via* la fonction `substring()`).
-- La vue `lexeme_` contient l'`id` du `lexeme` et les valeurs des tables `pos`, `dep` et `morph` plutôt que leurs `ids`. Les *features* contenues dans la table `morph`, qui peuvent varier d'un langage à l'autre, sont automatiquement ajoutées en tant que colonnes de la vue `lexeme_`. Un label morphologique comme `Number=Sing|Number[psor]=Plur|Person=3` sera représenté à l'aide des colonnes `number`, `number_psor` et `person`, qui contiendront des valeurs `text`.
-- La vue `word_` contient les propriétés de la table `word`, jointe à la vue `lexeme_`, et reliées aux tables `sent` et `par`.
-
-[^6]: De la même manière que dans n'importe quel lexique ou dictionnaire, un même forme graphique peut être utilisée dans différentes entrées lexicale: *être-verbe*, *être-nom*, etc.
-
-#### eav
-
-Le schéma `eav` est organisé en deux niveaux. Le premier niveau concerne l'ontologie et est constitué des classes d'objets (ex. "personne"), des types de propriétés (ex. "nom") et des types de relations (ex. "connaît"). Le second niveau concerne les individus (lesquels constituent le monde): les objets eux-mêmes (telle personne), les instances de relations (telle relation entre deux personnes particulières) et les instances de propriétés (le nom de telle personne).
-
-- La table __entity__ regroupe les choses du monde: personnes, lieux, objets matériels, idées, n'importe quoi que l'on veuille pouvoir désigner et mettre en relation avec d'autres choses. Ses colonnes sont réduites au minimum: un `id` qui permet d'y faire référence et une `classe` qui en définit la nature. La valeur dans la colonne `classe` est l'identifiant (`id`) d'une ligne de la table __class__ qui contient aussi les colonnes __name__ (unique et nécessaire) et __definition__ (optionnelle, sans contrainte). La table __classe__ est identique aux tables __relation_type__ et __attr_type__ (qui ont une position et une fonction identique pour les tables __relation__ et __attribute__), c'est pourquoi elles sont définies dans le diagramme comme étant toutes dérivées d'une table __concept__ (en fait un `type` et non une `table`).
-- La table __relation__ met en lien deux entités (sujet et objet, __sub__ et __obj__).
-- La table __attribute__ permet d'assigner des propriétés aux entités. Une propriété peut optionnellement avoir une valeur et cette valeur peut avoir différents _datatypes_: le type de propriété "age" requiert une valeur numérique entière (`integer`), tandis que la propriété "existe" ne nécessite aucune valeur. La propriété "existe" sera donc placée dans la table __attribute__, qui n'a pas de colonne __val__ tandis que la propriété "age" sera placée dans la table __attr_int__, laquelle table hérite de la table __attribute__ et possède en plus une colonne __val__ dont la valeur est un entier (`integer`). Naturellement, il est aussi possible d'insérer manuellement des données "age" comme texte dans la table destinée aux valeurs textuelles, ou dans celle qui est dédiée au format `jsonb`. Le plus facile, néanmoins, est d'utiliser les modules proposés pour l'importation qui insère automatiquement dans la table appropriée (voir plus bas). (Il y a en réalité davantage de table propriétés que dans le diagramme ci-dessous.)
-
-C'est par la table __string__ que sont mises en lien les deux parties de la base de données. Elle hérite de la table __attribute__, tout comme les tables __attr_int__ ou __attr_float__, mais elle a également une colonne `id` qui est référencée par les tables __par__, __sent__, __span__.
-
-## Format d'importation (eav)
-
-Si l'insertion d'entités, de propriétés ou de relations peut évidemment se faire manuellement, il est aussi possible d'importer des données structurées au format JSON comme suit, chaque objet JSON décrivant une entité, ses propriétés et les relations dont elle est le sujet.
+It is possible to import structured data in JSON format into the __eav__ schema. Each JSON object describes an entity, its properties, and the relations to which it belongs.
 
 ```json
 [
-    {"id": 1, "classe": "bibliothèque"},
-    {"id": 2, "classe": "lieu", "est_magique": null, "magicité": 1.2},
+    {"id": 1, "class": "library"},
+    {"id": 2, "class": "place", "is_magical": null, "height": 1.2, "x": 120, "y": -2},
     {
-        "classe": "personne", "nom": "becky", "relations": [
-            {"type": "fréquente", "objet": 1}
+        "class": "person", "name": "becky", "relations": [
+            {"type": "know", "object": 1}
         ]
     },
-    {"classe": "livre", "relations": [{"type": "dans", "objet": 1}]},
+    {"class": "book", "relations": [{"type": "in", "object": 1}]},
 ]
 ```
 
-Le seul champ requis est, pour chaque entité, le champ `class`. Le champ `id` permet de définir les relations entre les entités (il ne correspond pas à l'`id` de l'entité dans la base de données). Dans les entités, tous les champs qui ne sont pas `class`, `id` ou `relations` sont interprétés comme des propriétés et sont insérées dans les tables qui correspondent au `datatype`:
+The only required field is the field `class`. The optional `id` field is useful to define relations between entities (it does not correspond to the `id` of the entity in the database). All fields in entities other than `class`, `id`, or `relations` are interpreted as properties and inserted into tables that correspond to the datatype.
 
-```python
-{
-    "est_magique": None
-}  # ira dans la table `attribute`, sans valeur (`null` en JSON!)
-{"nom": "becky"}  # ira dans la table `string`
-{"date_birth": 1231}  # ira dans la table `attr_int`
-{"y": 1.2}  # ira dans la table `attr_float`
-{"noms": {"prénom": "!", "nom": "?"}}  # ira dans la table `attr_jsonb`
-{"?": [1, 2, 3]}  # idem
+There is one exception: the `xml` attribute table. Properties whose name is prefixed by `xml_` will be added to it, for example `xml_title` or `xml_content`. Functions allow you to remove tags for analysis with spaCy and reinsert them later. (The documentation for these functions is in progress.)
+
+```jsonc
+[{"is_magical": null}, // -> eav.attribute (no value)
+{"name": "becky"}, // -> eav.string
+{"date_birth": 1231}, // -> eav.attr_int
+{"y": 1.2}, // -> eav.attr_float
+{"arr": [1, 2, 3]}] // -> eav.attr_jsonb
+{"xml_content": "<p>this is <i>cool</i>/p>"} // -> eav.xml + eav.string
 ```
 
-Une exception concerne la table d'attribut `xml`. Y seront ajoutées les propriétés dont le nom est préfixé par `xml_`, par exemple `xml_titre` ou `xml_contenu`. Des fonctions permettent de retirer les balises pour l'analyse avec [spaCy](https://spacy.io/) et de les remettre plus tard^[La documentation pour ces fonctions est en cours d'écriture.].
-
-L'importation se fait à l'aide de la commande `copy`. Tous les arguments positionnels sont traités comme des fichiers à importer:
+Importation is done using the `copy` command. All positional arguments are treated as files to be imported.
 
 ```bash
 nlpg copy -d mydatabase data1.json data2.json ../*.json
 ```
-
-## Concordance
-
-Des fonctions minimales sont disponibles pour des concordances. Une utilisation minimale:
-
-```sql
-select (concord (w, 50)).*
-from word_ w where w.lemma in ('écrire', 'calculer')
-order by right_context;
-```
-
-Pour que l'ordre de tri se fasse sur le contexte gauche, il faut passer par une [CTE](https://www.postgresql.org/docs/current/queries-with.html):
-
-```sql
-WITH x AS (
-    SELECT
-        (concord (w, 50)).*
-    FROM
-        word_ w
-    /* écrire ici les conditions */
-    WHERE
-        w.norm = 'écrire'
-)
-SELECT
-    x.left_context,
-    x.pivot,
-    x.right_context
-FROM
-    x
-ORDER BY
-    reverse(x.left_context),
-    x.right_context;
-```
-
-## TODO
-
-- [ ] Fonction d'ajout automatique de `span` à partir de html/xml.
-- [ ] Ajout des annotations de `ents` et `spans`.
-- [ ] Ajout automatique des *customs attributes* des *tokens*.
-- [ ] Ajout (EAV) depuis HTML, MarkDown, ou *plain text*.
-- [ ] `Token.tag` (`XPOS`).
-- [ ] Génération dynamique des vues pour le schéma EAV.
