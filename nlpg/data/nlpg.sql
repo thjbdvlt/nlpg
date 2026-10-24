@@ -147,13 +147,17 @@ begin
     /* lemmas */
     raise info 'Inserting lemmas.';
     insert into lemma (str, pos)
-    select distinct lemma, pos from
+    select distinct
+        lemma,
+        pos
+    from
         _textobj
     where
         type = 1
     except
     select distinct
-        str, pos
+        str,
+        pos
     from
         lemma;
 
@@ -244,7 +248,8 @@ begin
         i.head
     from
         _textobj i
-        join lemma l on l.str = i.lemma and l.pos = i.pos
+        join lemma l on l.str = i.lemma
+            and l.pos = i.pos
         join morph m on m.feats = i.morph
         join lexeme x on x.norm = i.norm
             and l.id = x.lemma
@@ -715,8 +720,7 @@ create index word_sent_idx on nlpg.word using btree (sent);
 -- Name: morph jsonize_feats; Type: TRIGGER; Schema: nlpg; Owner: -
 --
 create trigger jsonize_feats
-    after insert or update of feats on nlpg.morph
-    for each row
+    after insert or update of feats on nlpg.morph for each row
     execute function nlpg.feats_to_json ();
 
 --
