@@ -18,7 +18,7 @@ def copyvec(
     schema: str,
     table: str,
     binary: bool = True,
-    **kwargs,
+    **_,
 ):
     vectors = KeyedVectors.load_word2vec_format(file, binary=binary)
     dims = Literal(int(vectors.vector_size))

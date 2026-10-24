@@ -22,13 +22,7 @@ def make_tags_from_span_attrs(tag: str, attrs: dict) -> tuple[str, str]:
         return s[: pos + 1], s[pos + 1 :]
 
 
-def add_a_span_as_tag(
-    s: list,
-    start: int,
-    length: int,
-    tag: str,
-    attrs: dict,
-) -> None:
+def add_a_span_as_tag(s: list, start: int, length: int, tag: str, attrs: dict):
     "Add a span as XML tags."
     start_tag, end_tag = make_tags_from_span_attrs(tag, attrs)
     end = start + length
@@ -65,10 +59,7 @@ LEFT OUTER JOIN sp ON t.{id} = sp.string""").format(**conf)
     return stmt_get
 
 
-def generate_xml_with_spans(
-    conn: Connection,
-    stmt_get: str = None,
-) -> None:
+def generate_xml_with_spans(conn: Connection, stmt_get: str = None):
     """Format texts as XML, encoding spans."""
     cur_fetch = conn.cursor()
     cur_send = conn.cursor()

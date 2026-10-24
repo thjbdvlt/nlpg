@@ -15,15 +15,14 @@ def get_morph_features_list(cur: Cursor) -> SQL:
     return morph_cols
 
 
-def create_view_morph_as_columns(cur: Cursor, viewname: str, stmt: SQL) -> None:
+def create_view_morph_as_columns(cur: Cursor, viewname: str, stmt: SQL):
     """Dynamically create a view with morphological features as columns."""
-
     viewname = Identifier(SCHEMA, viewname)
     cur.execute(SQL("drop view if exists {} cascade").format(viewname))
     cur.execute(stmt.format(viewname, get_morph_features_list(cur)))
 
 
-def make_views(cur: Cursor) -> None:
+def make_views(cur: Cursor):
     """Make the views word_, lexeme_ and sent_."""
     create_view_morph_as_columns(
         cur,
@@ -113,13 +112,11 @@ FROM
     JOIN morph ON morph.id = lexeme.morph
     """),
     )
-
     make_function_concordances(cur)
 
 
-def make_function_concordances(cur: Cursor) -> None:
+def make_function_concordances(cur: Cursor):
     """Make functions that depends on views.."""
-
     cur.execute(
         SQL("""CREATE OR REPLACE FUNCTION
 {} (word_, int = 100, int = 50)
@@ -142,7 +139,6 @@ WHERE
     $1.string = string.id
 $function$;""").format(Identifier(SCHEMA, "align_concordance"))
     )
-
     cur.execute(
         SQL("""CREATE OR REPLACE FUNCTION
 {} (text, int = 100, int = 50)

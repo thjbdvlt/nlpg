@@ -46,10 +46,8 @@ RowToken = namedtuple(
 
 def token_sent_i(doc: Doc) -> Iterator[int]:
     """Get Sentence Indexes (one per token).
-
     This behaves like `[token.sent.i for i in doc]` (which doesn't exist).
     """
-
     for n, sent in enumerate(doc.sents, 1):
         sent_len = len(sent)
         for i in range(sent_len):
@@ -58,7 +56,6 @@ def token_sent_i(doc: Doc) -> Iterator[int]:
 
 def get_sents(text_id: int, doc: Doc) -> Iterator[RowToken]:
     """Get a Tuple (RowToken) for each Sentence."""
-
     for sent_i, i in enumerate(doc.sents, 1):
         yield RowToken(
             text_id=text_id,
@@ -87,7 +84,6 @@ def get_tokens(
     lookup_dep: dict,
 ) -> Iterator[RowToken]:
     """Get a Tuple for each Token in a Doc."""
-
     for sent, token in zip(token_sent_i(doc), doc):
         idx = token.idx + 1
         i = token.i + 1
@@ -104,8 +100,6 @@ def get_tokens(
                 # word-specific features
                 norm=token.norm_,
                 pos=lookup_pos[token.pos],
-                # FIXME: morphology
-                # morph=json.dumps(token.morph.to_dict()),
                 morph=str(token.morph),
                 lemma=token.lemma_,
                 dep=lookup_dep[token.dep],
@@ -182,7 +176,7 @@ def annotate(
     stmt_send = make_copy_stmt(TABLE_ANNOTES, RowToken._fields)
 
     def annote_some_texts(cur_send, docs, pinfo) -> bool:
-        """Annote a few texts and put outputs into the database."""
+        """Annotate a few texts and put outputs into the database."""
         n = 0
         with cur_send.copy(stmt_send) as copy:
             for doc, text_id in docs:
@@ -216,6 +210,10 @@ def annotate(
     cur_fetch.close()
 
 
+def has_alpha(token):
+    return any(c.isalpha() for c in token.text)
+
+
 def make_nlp(model: str, isword: str = None, **kwargs) -> Language:
     """Load and set up the pipeline."""
     nlp = spacy.load(model)
@@ -225,5 +223,5 @@ def make_nlp(model: str, isword: str = None, **kwargs) -> Language:
             func = spacy.registry.misc.get(isword)
             Token.set_extension(extname, getter=func)
         else:
-            Token.set_extension(extname, getter=lambda i: True)
+            Token.set_extension(extname, getter=has_alpha)
     return nlp

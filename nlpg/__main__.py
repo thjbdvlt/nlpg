@@ -1,11 +1,7 @@
 """Command Line Interface."""
 
 import argparse
-from argparse import (
-    ArgumentDefaultsHelpFormatter,
-    ArgumentParser,
-    Namespace,
-)
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 
 import psycopg
 from psycopg import Connection

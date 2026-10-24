@@ -11,9 +11,8 @@ from .schema import SCHEMA_EAV, TABLE_IMPORT
 from .xmltotext import tags_to_xtag
 
 
-def _copy_from_json(copy: Copy, files: Iterator, dynamic_ncols: bool = False) -> None:
+def _copy_from_json(copy: Copy, files: Iterator, dynamic_ncols: bool = False):
     """Copy from JSON files."""
-
     for filepath in tqdm.tqdm(files, dynamic_ncols=dynamic_ncols):
         with open(filepath, "r") as file:
             array = json.load(file)
@@ -22,9 +21,8 @@ def _copy_from_json(copy: Copy, files: Iterator, dynamic_ncols: bool = False) ->
                 copy.write_row((json.dumps(obj, ensure_ascii=False),))
 
 
-def _copy_from_json_l(copy: Copy, files: Iterator, dynamic_ncols: bool = False) -> None:
-    """Copy from JSONL files (one JSON object per line)."""
-
+def _copy_from_json_l(copy: Copy, files: Iterator, dynamic_ncols: bool = False):
+    """Copy from JSONL files (one JSON per line)."""
     for filepath in tqdm.tqdm(files, dynamic_ncols=dynamic_ncols):
         with open(filepath, "r") as file:
             for line in file:
@@ -38,10 +36,9 @@ def copy_from(
     noinsert: bool = False,
     globexpr: Optional[str] = None,
     dynamic_ncols: bool = False,
-    **kwargs,
+    **_,
 ):
-    """Copy from JSON/JSONL files into the database."""
-
+    """Copy from JSON(L) files into the database."""
     cur = conn.cursor()
     schema = Identifier(SCHEMA_EAV)
     table = Identifier(TABLE_IMPORT)
@@ -54,4 +51,3 @@ def copy_from(
     if not noinsert:
         cur.execute(SQL("call {}.importer();").format(schema))
         tags_to_xtag(conn)
-    # cur.close()

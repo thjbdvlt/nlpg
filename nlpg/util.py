@@ -38,7 +38,7 @@ def roundup(a: float) -> int:
     return int(a) + ((int(a) - a) != 0)
 
 
-def log_notice(diag: Diagnostic) -> None:
+def log_notice(diag: Diagnostic):
     """Minimal function for `RAISE INFO`."""
     if diag.severity == "INFO":
         print(diag.message_primary)
@@ -60,7 +60,6 @@ def make_log_func_tqdm(
 
 class CallableDict(dict):
     """A dict that can be called to return an updated copy.
-
     a = {"group": 1, "name": "Aline"}
     b = a(name="Bernie")
     """

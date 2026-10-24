@@ -33,7 +33,6 @@ opt_groups = {
         [["--batch-size"], store_int_opt(default=100)],
         [["--morphologizer-name"], str_opt(default="morphologizer")],
         [["--parser-name"], str_opt(default="parser")],
-        [["--paragraph-delimiter"], str_opt(default="\n\n")],
     ],
     "copy": [
         [["files"], pos_many_str],
