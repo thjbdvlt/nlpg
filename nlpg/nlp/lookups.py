@@ -1,6 +1,6 @@
-from psycopg.sql import Identifier, SQL
-from psycopg import Cursor
 import spacy
+from psycopg import Cursor
+from psycopg.sql import SQL, Identifier
 from spacy import Language
 from spacy.morphology import Morphology
 

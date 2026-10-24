@@ -1,7 +1,7 @@
 import pkgutil
-from psycopg.sql import SQL, Identifier
-from psycopg import Cursor
 
+from psycopg import Cursor
+from psycopg.sql import SQL, Identifier
 
 SCHEMA_EAV = "eav"
 SCHEMA = "nlpg"

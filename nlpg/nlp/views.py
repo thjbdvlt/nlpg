@@ -1,5 +1,6 @@
 from psycopg import Cursor
 from psycopg.sql import SQL, Identifier
+
 from ..schema import SCHEMA
 from ..util import get_config_value
 

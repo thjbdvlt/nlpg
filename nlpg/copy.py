@@ -1,11 +1,13 @@
-import json
 import glob
-import tqdm
-from psycopg.sql import SQL, Identifier
-from psycopg.copy import Copy
-from psycopg import Connection
-from .schema import TABLE_IMPORT, SCHEMA_EAV
+import json
 from typing import Iterator, Optional
+
+import tqdm
+from psycopg import Connection
+from psycopg.copy import Copy
+from psycopg.sql import SQL, Identifier
+
+from .schema import SCHEMA_EAV, TABLE_IMPORT
 from .xmltotext import tags_to_xtag
 
 

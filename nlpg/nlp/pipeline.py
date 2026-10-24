@@ -1,5 +1,5 @@
-from spacy.language import Language
 import spacy
+from spacy.language import Language
 
 
 @Language.component("sent_on_newline")

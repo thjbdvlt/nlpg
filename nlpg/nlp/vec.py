@@ -1,7 +1,7 @@
+from gensim.models import KeyedVectors
 from pgvector.psycopg import register_vector
 from psycopg import Connection
 from psycopg.sql import SQL, Identifier, Literal
-from gensim.models import KeyedVectors
 from tqdm import tqdm
 
 

@@ -1,13 +1,14 @@
 """A module to build XML tags from spans."""
 
-from psycopg import Cursor, Connection
+import nh3
+import tqdm
+from lxml import etree
+from lxml.html import Element, tostring
+from psycopg import Connection, Cursor
 from psycopg.sql import SQL, Identifier
+
 from ..schema import SCHEMA
 from ..util import get_config_value
-import nh3
-from lxml.html import Element, tostring
-from lxml import etree
-import tqdm
 
 
 def make_tags_from_span_attrs(tag: str, attrs: dict) -> tuple[str, str]:

@@ -118,10 +118,12 @@ Si l'insertion d'entités, de propriétés ou de relations peut évidemment se f
 Le seul champ requis est, pour chaque entité, le champ `class`. Le champ `id` permet de définir les relations entre les entités (il ne correspond pas à l'`id` de l'entité dans la base de données). Dans les entités, tous les champs qui ne sont pas `class`, `id` ou `relations` sont interprétés comme des propriétés et sont insérées dans les tables qui correspondent au `datatype`:
 
 ```python
-{"est_magique": None}  # ira dans la table `attribute`, sans valeur (`null` en JSON!)
-{"nom": "becky"}       # ira dans la table `string`
-{"date_birth": 1231}          # ira dans la table `attr_int`
-{"y": 1.2}           # ira dans la table `attr_float`
+{
+    "est_magique": None
+}  # ira dans la table `attribute`, sans valeur (`null` en JSON!)
+{"nom": "becky"}  # ira dans la table `string`
+{"date_birth": 1231}  # ira dans la table `attr_int`
+{"y": 1.2}  # ira dans la table `attr_float`
 {"noms": {"prénom": "!", "nom": "?"}}  # ira dans la table `attr_jsonb`
 {"?": [1, 2, 3]}  # idem
 ```

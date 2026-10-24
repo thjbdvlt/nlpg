@@ -1,10 +1,13 @@
-from psycopg import Connection
-import spacy
-from spacy import Language
-from spacy.tokens import Token, Doc
-import tqdm
+import json
 from collections import namedtuple
 from typing import Iterator
+
+import spacy
+import tqdm
+from psycopg import Connection
+from spacy import Language
+from spacy.tokens import Doc, Token
+
 from ..errors import InvalidRowType
 from ..schema import TABLE_ANNOTES
 from ..statements import make_copy_stmt
@@ -110,7 +113,9 @@ def get_tokens(
                 # word-specific features
                 norm=token.norm_,
                 pos=lookup_pos[token.pos],
-                morph=lookup_feats[token.morph.key],
+                # FIXME: morphology
+                # morph=json.dumps(token.morph.to_dict()),
+                morph=str(token.morph),
                 lemma=token.lemma_,
                 dep=lookup_dep[token.dep],
                 head=token.head.i + 1,
@@ -197,7 +202,6 @@ def annotate(
     conn: Connection,
     stmt_select: str,
     nlp: Language,
-    morphologizer_name: str = "morphologizer",
     parser_name: str = "parser",
     batch_size_insert: int = -1,
     commit_each_batch: bool = True,
@@ -212,7 +216,6 @@ def annotate(
     cur_fetch = conn.cursor()
     cur_send = conn.cursor()
 
-    l_feats = get_lookup_feats(cur_fetch, nlp, morphologizer_name)
     l_dep = get_lookup_dep(cur_fetch, nlp, parser_name)
     l_pos = get_lookup_pos(cur_fetch)
 
@@ -244,7 +247,7 @@ def annotate(
                     plen,
                     doc,
                     l_pos,
-                    l_feats,
+                    {},
                     l_dep,
                 ):
                     copy.write_row(row)

@@ -1,230 +1,267 @@
 --
 -- PostgreSQL database dump
 --
-
 -- Dumped from database version 16.8 (Debian 16.8-1.pgdg120+1)
 -- Dumped by pg_dump version 16.8 (Debian 16.8-1.pgdg120+1)
+set statement_timeout = 0;
 
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
+set lock_timeout = 0;
+
+set idle_in_transaction_session_timeout = 0;
+
+set client_encoding = 'UTF8';
+
+set standard_conforming_strings = on;
+
+select
+    pg_catalog.set_config('search_path', '', false);
+
+set check_function_bodies = false;
+
+set xmloption = content;
+
+set client_min_messages = warning;
+
+set row_security = off;
 
 --
 -- Name: nlpg; Type: SCHEMA; Schema: -; Owner: -
 --
-
-CREATE SCHEMA nlpg;
-
+create schema nlpg;
 
 --
 -- Name: _get_config(text); Type: FUNCTION; Schema: nlpg; Owner: -
 --
-
-CREATE FUNCTION nlpg._get_config(key text) RETURNS text
-    LANGUAGE sql
-    AS $_$
-    SELECT value FROM nlpg._config WHERE key = $1;
+create function nlpg._get_config (
+    key text
+)
+    returns text
+    language sql
+    as $_$
+    select
+        value
+    from
+        nlpg._config
+    where
+        key = $1;
 $_$;
-
 
 --
 -- Name: _set_config(text, text); Type: FUNCTION; Schema: nlpg; Owner: -
 --
-
-CREATE FUNCTION nlpg._set_config(key text, value text) RETURNS void
-    LANGUAGE sql
-    AS $_$
-    DELETE FROM nlpg._config
-    WHERE key = $1;
-    INSERT INTO nlpg._config (key, value)
-    SELECT
+create function nlpg._set_config (
+    key text,
+    value text
+)
+    returns void
+    language sql
+    as $_$
+    delete from nlpg._config
+    where key = $1;
+    insert into nlpg._config (key, value)
+    select
         $1,
         $2;
 $_$;
 
-
 --
 -- Name: feats_to_json(); Type: FUNCTION; Schema: nlpg; Owner: -
 --
-
-CREATE FUNCTION nlpg.feats_to_json() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    UPDATE
+create function nlpg.feats_to_json ()
+    returns trigger
+    language plpgsql
+    as $$
+begin
+    update
         morph
-    SET
-        j = CASE WHEN feats != '' THEN
+    set
+        j = case when feats != '' then
             jsonb_object(regexp_split_to_array(feats, '\||='))
-        ELSE
+        else
             '{}'::jsonb
-        END
-    WHERE
+        end
+    where
         id = new.id;
-
-RETURN new;
-END;
+    return new;
+end;
 $$;
 
+set default_tablespace = '';
 
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
+set default_table_access_method = heap;
 
 --
 -- Name: token; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.token (
-    sent integer NOT NULL,
-    i integer NOT NULL,
-    idx integer NOT NULL,
-    len smallint NOT NULL,
-    s text NOT NULL,
-    tspace smallint NOT NULL
+create table nlpg.token (
+    sent integer not null,
+    i integer not null,
+    idx integer not null,
+    len smallint not null,
+    s text not null,
+    tspace smallint not null
 );
-
 
 --
 -- Name: word; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.word (
-    dep smallint NOT NULL,
-    lexeme integer NOT NULL,
-    head integer NOT NULL
+create table nlpg.word (
+    dep smallint not null,
+    lexeme integer not null,
+    head integer not null
 )
-INHERITS (nlpg.token);
-
+inherits (
+    nlpg.token
+);
 
 --
 -- Name: has_aux(nlpg.word, integer); Type: FUNCTION; Schema: nlpg; Owner: -
 --
-
-CREATE FUNCTION nlpg.has_aux(nlpg.word, n integer) RETURNS nlpg.word
-    LANGUAGE sql
-    AS $_$
-select
-    m2
-from word m2
-join lexeme x2 on m2.lexeme = x2.id
-join pos n on n.id = x2.pos
-join dep f on f.id = m2.dep
-where $1.string = m2.string and $1.i = m2.head
-and (n.name in ('aux', 'verb') or f.name like 'aux:%')
-limit $2
+create function nlpg.has_aux (
+    nlpg.word,
+    n integer
+)
+    returns nlpg.word
+    language sql
+    as $_$
+    select
+        m2
+    from
+        word m2
+        join lexeme x2 on m2.lexeme = x2.id
+        join pos n on n.id = x2.pos
+        join dep f on f.id = m2.dep
+    where
+        $1.string = m2.string
+        and $1.i = m2.head
+        and (n.name in ('aux', 'verb')
+            or f.name like 'aux:%')
+    limit $2
 $_$;
-
 
 --
 -- Name: has_head(nlpg.word); Type: FUNCTION; Schema: nlpg; Owner: -
 --
-
-CREATE FUNCTION nlpg.has_head(nlpg.word) RETURNS nlpg.word
-    LANGUAGE sql
-    AS $_$
-select
-    m2
-from word m2
-join lexeme x2 on m2.lexeme = x2.id
-join lexeme x1 on $1.lexeme = x1.id
-where $1.string = m2.string and $1.head = m2.i
+create function nlpg.has_head (
+    nlpg.word
+)
+    returns nlpg.word
+    language sql
+    as $_$
+    select
+        m2
+    from
+        word m2
+        join lexeme x2 on m2.lexeme = x2.id
+        join lexeme x1 on $1.lexeme = x1.id
+    where
+        $1.string = m2.string
+        and $1.head = m2.i
 $_$;
-
 
 --
 -- Name: insert_annotations(integer); Type: FUNCTION; Schema: nlpg; Owner: -
 --
-
-CREATE FUNCTION nlpg.insert_annotations(integer DEFAULT 1) RETURNS void
-    LANGUAGE plpgsql
-    AS $_$
-BEGIN
-
+create function nlpg.insert_annotations (
+    integer default 1
+)
+    returns void
+    language plpgsql
+    as $_$
+begin
     /* lemmas */
-    RAISE info 'Inserting lemmas.';
-    INSERT INTO lemma (str)
-    SELECT DISTINCT
+    raise info 'Inserting lemmas.';
+    insert into lemma (str)
+    select distinct
         lemma
-    FROM
+    from
         _textobj
-    WHERE
+    where
         type = 1
-    EXCEPT
-    SELECT DISTINCT
+    except
+    select distinct
         str
-    FROM
+    from
         lemma;
 
+    /* Morphologies */
+    raise info 'Inserting morphologies.';
+    insert into morph (feats)
+    select distinct
+        i.morph
+    from
+        _textobj i
+    where
+        type = 1
+    except
+    select distinct
+        feats
+    from
+        nlpg.morph;
+
     /* Lexemes */
-    RAISE info 'Inserting lexemes.';
-    INSERT INTO lexeme (norm, pos, lemma, morph)
-    SELECT DISTINCT
+    raise info 'Inserting lexemes.';
+    insert into lexeme (norm, pos, lemma, morph)
+    select distinct
         i.norm,
         i.pos,
         l.id,
-        i.morph
-    FROM
+        m.id
+    from
         _textobj i
-        JOIN lemma l ON l.str = i.lemma
-    WHERE
+        join lemma l on l.str = i.lemma
+        join morph m on m.feats = i.morph
+    where
         i.type = 1
-    EXCEPT
-    SELECT DISTINCT
+    except
+    select distinct
         x.norm,
         x.pos,
         x.lemma,
         x.morph
-    FROM
+    from
         lexeme x;
 
     /* Paragraphs */
-    RAISE info 'Inserting paragraphs.';
-    INSERT INTO par (string, i, idx, len)
-    SELECT
+    raise info 'Inserting paragraphs.';
+    insert into par (string, i, idx, len)
+    select
         i.text_id,
         i.par_i,
         i.idx,
         i.len
-    FROM
+    from
         _textobj i
-    WHERE
-        i.type = - 2;
+    where
+        i.type = -2;
 
     /* Sentences */
-    RAISE info 'Inserting sentences.';
-    INSERT INTO sent (string, par, i, idx, len)
-    SELECT
+    raise info 'Inserting sentences.';
+    insert into sent (string, par, i, idx, len)
+    select
         i.text_id,
         p.id,
         i.sent_i,
         i.idx,
         i.len
-    FROM
+    from
         _textobj i
-        JOIN par p ON p.string = i.text_id
-            AND p.i = i.par_i
-    WHERE
-        i.type = - 1;
+        join par p on p.string = i.text_id
+            and p.i = i.par_i
+    where
+        i.type = -1;
 
     /* Update indexes */
-    RAISE info 'Updating indexes.';
+    raise info 'Updating indexes.';
     analyze sent;
     analyze lemma;
     analyze lexeme;
     analyze _textobj;
 
     /* Words */
-    RAISE info 'Inserting words.';
-    INSERT INTO word (sent, i, idx, len, s, tspace, dep, lexeme, head)
-    SELECT
+    raise info 'Inserting words.';
+    insert into word (sent, i, idx, len, s, tspace, dep, lexeme, head)
+    select
         s.id,
         i.i,
         i.idx,
@@ -234,71 +271,67 @@ BEGIN
         i.dep,
         x.id,
         i.head
-    FROM
+    from
         _textobj i
-        JOIN lemma l ON l.str = i.lemma
-        JOIN lexeme x ON x.pos = i.pos
-            AND x.norm = i.norm
-            AND l.id = x.lemma
-            AND i.morph = x.morph
-
-        -- TODO: par_i
-        -- FIXME
-        JOIN par p ON p.i = i.par_i
-            AND p.string = i.text_id
-        JOIN sent s ON s.string = i.text_id
-            AND s.i = i.sent_i
-            AND p.id = s.par
-    WHERE
+        join lemma l on l.str = i.lemma
+        join morph m on m.feats = i.morph
+        join lexeme x on x.pos = i.pos
+            and x.norm = i.norm
+            and l.id = x.lemma
+            and x.morph = m.id
+            -- AND i.morph = x.morph
+            -- TODO: par_i
+            -- FIXME
+        join par p on p.i = i.par_i
+            and p.string = i.text_id
+        join sent s on s.string = i.text_id
+            and s.i = i.sent_i
+            and p.id = s.par
+    where
         i.type = 1;
 
     /* Non-word tokens */
-    RAISE info 'Inserting non-words tokens...';
-    INSERT INTO token (sent, i, idx, len, s, tspace)
-    SELECT
+    raise info 'Inserting non-words tokens...';
+    insert into token (sent, i, idx, len, s, tspace)
+    select
         s.id,
         i.i,
         i.idx,
         i.len,
         i.s,
         i.tspace
-    FROM
+    from
         _textobj i
         -- TODO: par_i
         -- FIXME
-        JOIN par p ON p.i = i.par_i
-            AND p.string = i.text_id
-        JOIN sent s ON s.string = i.text_id
-            AND s.i = i.sent_i
-            AND p.id = s.par
-    WHERE
+        join par p on p.i = i.par_i
+            and p.string = i.text_id
+        join sent s on s.string = i.text_id
+            and s.i = i.sent_i
+            and p.id = s.par
+    where
         i.type = 0;
-
-    RAISE info 'Annotations successfully inserted!';
+    raise info 'Annotations successfully inserted!';
 
     /* Truncate table if parameter is 1. */
-    IF $1 = 1 THEN
-        TRUNCATE _textobj;
-    END IF;
-END;
+    if $1 = 1 then
+        truncate _textobj;
+    end if;
+end;
 $_$;
-
 
 --
 -- Name: _config; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg._config (
+create table nlpg._config (
     key text,
     value text
 );
 
-
 --
 -- Name: _textobj; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg._textobj (
+create table nlpg._textobj (
     text_id integer,
     par_i integer,
     sent_i integer,
@@ -310,68 +343,57 @@ CREATE TABLE nlpg._textobj (
     tspace smallint,
     norm text,
     pos smallint,
-    morph smallint,
+    morph text,
     lemma text,
     dep smallint,
     head integer,
     userdata jsonb
 );
 
-
 --
 -- Name: dep; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.dep (
-    id smallint NOT NULL,
-    name text NOT NULL,
+create table nlpg.dep (
+    id smallint not null,
+    name text not null,
     definition text
 );
-
 
 --
 -- Name: dep_id_seq; Type: SEQUENCE; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE nlpg.dep ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME nlpg.dep_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
+alter table nlpg.dep
+    alter column id
+    add generated by default as identity (sequence NAME
+        nlpg.dep_id_seq start with 1 increment by 1
+        no minvalue
+        no maxvalue
+        cache 1);
 
 --
 -- Name: lemma; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.lemma (
-    id integer NOT NULL,
-    str text NOT NULL
+create table nlpg.lemma (
+    id integer not null,
+    str text not null
 );
-
 
 --
 -- Name: lexeme; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.lexeme (
-    id integer NOT NULL,
-    lemma integer NOT NULL,
-    pos smallint NOT NULL,
-    morph smallint NOT NULL,
-    norm text NOT NULL
+create table nlpg.lexeme (
+    id integer not null,
+    lemma integer not null,
+    pos smallint not null,
+    morph smallint not null,
+    norm text not null
 );
-
 
 --
 -- Name: morph; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.morph (
-    id smallint NOT NULL,
+create table nlpg.morph (
+    id smallint not null,
     feats text,
     j jsonb,
     numtype text,
@@ -389,180 +411,152 @@ CREATE TABLE nlpg.morph (
     poss text
 );
 
-
 --
 -- Name: pos; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.pos (
-    id smallint NOT NULL,
-    name text NOT NULL,
+create table nlpg.pos (
+    id smallint not null,
+    name text not null,
     definition text
 );
-
 
 --
 -- Name: seg; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.seg (
-    string integer NOT NULL,
-    idx integer NOT NULL,
-    len integer NOT NULL
+create table nlpg.seg (
+    string integer not null,
+    idx integer not null,
+    len integer not null
 );
-
 
 --
 -- Name: sent; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.sent (
-    id integer NOT NULL,
-    par integer NOT NULL,
-    i integer NOT NULL
+create table nlpg.sent (
+    id integer not null,
+    par integer not null,
+    i integer not null
 )
-INHERITS (nlpg.seg);
-
+inherits (
+    nlpg.seg
+);
 
 --
 -- Name: lemma_id_seq; Type: SEQUENCE; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE nlpg.lemma ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME nlpg.lemma_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
+alter table nlpg.lemma
+    alter column id
+    add generated by default as identity (sequence NAME
+        nlpg.lemma_id_seq start with 1 increment by 1
+        no minvalue
+        no maxvalue
+        cache 1);
 
 --
 -- Name: lexeme_id_seq; Type: SEQUENCE; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE nlpg.lexeme ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME nlpg.lexeme_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
+alter table nlpg.lexeme
+    alter column id
+    add generated by default as identity (sequence NAME
+        nlpg.lexeme_id_seq start with 1 increment by 1
+        no minvalue
+        no maxvalue
+        cache 1);
 
 --
 -- Name: markup; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.markup (
+create table nlpg.markup (
     id integer,
     text text
 );
 
-
 --
 -- Name: morph_id_seq; Type: SEQUENCE; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE nlpg.morph ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME nlpg.morph_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
+alter table nlpg.morph
+    alter column id
+    add generated by default as identity (sequence NAME
+        nlpg.morph_id_seq start with 1 increment by 1
+        no minvalue
+        no maxvalue
+        cache 1);
 
 --
 -- Name: par; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.par (
-    id integer NOT NULL,
-    i integer NOT NULL
+create table nlpg.par (
+    id integer not null,
+    i integer not null
 )
-INHERITS (nlpg.seg);
-
+inherits (
+    nlpg.seg
+);
 
 --
 -- Name: par_id_seq; Type: SEQUENCE; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE nlpg.par ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME nlpg.par_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
+alter table nlpg.par
+    alter column id
+    add generated by default as identity (sequence NAME
+        nlpg.par_id_seq start with 1 increment by 1
+        no minvalue
+        no maxvalue
+        cache 1);
 
 --
 -- Name: pos_id_seq; Type: SEQUENCE; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE nlpg.pos ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME nlpg.pos_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
+alter table nlpg.pos
+    alter column id
+    add generated by default as identity (sequence NAME
+        nlpg.pos_id_seq start with 1 increment by 1
+        no minvalue
+        no maxvalue
+        cache 1);
 
 --
 -- Name: sent_id_seq; Type: SEQUENCE; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE nlpg.sent ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME nlpg.sent_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
+alter table nlpg.sent
+    alter column id
+    add generated by default as identity (sequence NAME
+        nlpg.sent_id_seq start with 1 increment by 1
+        no minvalue
+        no maxvalue
+        cache 1);
 
 --
 -- Name: span; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.span (
+create table nlpg.span (
     attrs jsonb
 )
-INHERITS (nlpg.seg);
-
+inherits (
+    nlpg.seg
+);
 
 --
 -- Name: stopword; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.stopword (
-    norm text NOT NULL
+create table nlpg.stopword (
+    norm text not null
 );
-
 
 --
 -- Name: xspan; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.xspan (
+create table nlpg.xspan (
     tag text
 )
-INHERITS (nlpg.span);
-
+inherits (
+    nlpg.span
+);
 
 --
 -- Name: xtag; Type: TABLE; Schema: nlpg; Owner: -
 --
-
-CREATE TABLE nlpg.xtag (
+create table nlpg.xtag (
     sid integer,
     idxtext integer,
     idxxml integer,
@@ -570,328 +564,247 @@ CREATE TABLE nlpg.xtag (
     s text
 );
 
-
 --
 -- Name: dep dep_name_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.dep
-    ADD CONSTRAINT dep_name_key UNIQUE (name);
-
+alter table only nlpg.dep
+    add constraint dep_name_key unique (name);
 
 --
 -- Name: dep dep_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.dep
-    ADD CONSTRAINT dep_pkey PRIMARY KEY (id);
-
+alter table only nlpg.dep
+    add constraint dep_pkey primary key (id);
 
 --
 -- Name: lemma lemma_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.lemma
-    ADD CONSTRAINT lemma_pkey PRIMARY KEY (id);
-
+alter table only nlpg.lemma
+    add constraint lemma_pkey primary key (id);
 
 --
 -- Name: lemma lemma_str_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.lemma
-    ADD CONSTRAINT lemma_str_key UNIQUE (str);
-
+alter table only nlpg.lemma
+    add constraint lemma_str_key unique (str);
 
 --
 -- Name: lexeme lexeme_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.lexeme
-    ADD CONSTRAINT lexeme_pkey PRIMARY KEY (id);
-
+alter table only nlpg.lexeme
+    add constraint lexeme_pkey primary key (id);
 
 --
 -- Name: lexeme lexeme_uniq; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.lexeme
-    ADD CONSTRAINT lexeme_uniq UNIQUE (lemma, norm, pos, morph);
-
+alter table only nlpg.lexeme
+    add constraint lexeme_uniq unique (lemma, norm, pos, morph);
 
 --
 -- Name: morph morph_feats_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.morph
-    ADD CONSTRAINT morph_feats_key UNIQUE (feats);
-
+alter table only nlpg.morph
+    add constraint morph_feats_key unique (feats);
 
 --
 -- Name: morph morph_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.morph
-    ADD CONSTRAINT morph_pkey PRIMARY KEY (id);
-
+alter table only nlpg.morph
+    add constraint morph_pkey primary key (id);
 
 --
 -- Name: par par_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.par
-    ADD CONSTRAINT par_pkey PRIMARY KEY (id);
-
+alter table only nlpg.par
+    add constraint par_pkey primary key (id);
 
 --
 -- Name: pos pos_name_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.pos
-    ADD CONSTRAINT pos_name_key UNIQUE (name);
-
+alter table only nlpg.pos
+    add constraint pos_name_key unique (name);
 
 --
 -- Name: pos pos_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.pos
-    ADD CONSTRAINT pos_pkey PRIMARY KEY (id);
-
+alter table only nlpg.pos
+    add constraint pos_pkey primary key (id);
 
 --
 -- Name: sent sent_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.sent
-    ADD CONSTRAINT sent_pkey PRIMARY KEY (id);
-
+alter table only nlpg.sent
+    add constraint sent_pkey primary key (id);
 
 --
 -- Name: stopword stopword_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.stopword
-    ADD CONSTRAINT stopword_pkey PRIMARY KEY (norm);
-
+alter table only nlpg.stopword
+    add constraint stopword_pkey primary key (norm);
 
 --
 -- Name: token token_sent_i_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.token
-    ADD CONSTRAINT token_sent_i_key UNIQUE (sent, i);
-
+alter table only nlpg.token
+    add constraint token_sent_i_key unique (sent, i);
 
 --
 -- Name: word word_sent_i_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.word
-    ADD CONSTRAINT word_sent_i_key UNIQUE (sent, i);
-
+alter table only nlpg.word
+    add constraint word_sent_i_key unique (sent, i);
 
 --
 -- Name: dep_name_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX dep_name_idx ON nlpg.dep USING btree (name);
-
+create index dep_name_idx on nlpg.dep using btree (name);
 
 --
 -- Name: lexeme_lemma_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX lexeme_lemma_idx ON nlpg.lexeme USING btree (lemma);
-
+create index lexeme_lemma_idx on nlpg.lexeme using btree (lemma);
 
 --
 -- Name: lexeme_morph_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX lexeme_morph_idx ON nlpg.lexeme USING btree (morph);
-
+create index lexeme_morph_idx on nlpg.lexeme using btree (morph);
 
 --
 -- Name: lexeme_norm_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX lexeme_norm_idx ON nlpg.lexeme USING btree (norm);
-
+create index lexeme_norm_idx on nlpg.lexeme using btree (norm);
 
 --
 -- Name: lexeme_pos_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX lexeme_pos_idx ON nlpg.lexeme USING btree (pos);
-
+create index lexeme_pos_idx on nlpg.lexeme using btree (pos);
 
 --
 -- Name: morph_feats_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX morph_feats_idx ON nlpg.morph USING btree (feats);
-
+create index morph_feats_idx on nlpg.morph using btree (feats);
 
 --
 -- Name: morph_j_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX morph_j_idx ON nlpg.morph USING btree (j);
-
+create index morph_j_idx on nlpg.morph using btree (j);
 
 --
 -- Name: par_i_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX par_i_idx ON nlpg.par USING btree (i);
-
+create index par_i_idx on nlpg.par using btree (i);
 
 --
 -- Name: pos_name_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX pos_name_idx ON nlpg.pos USING btree (name);
-
+create index pos_name_idx on nlpg.pos using btree (name);
 
 --
 -- Name: seg_string_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX seg_string_idx ON nlpg.seg USING btree (string);
-
+create index seg_string_idx on nlpg.seg using btree (string);
 
 --
 -- Name: sent_i_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX sent_i_idx ON nlpg.sent USING btree (i);
-
+create index sent_i_idx on nlpg.sent using btree (i);
 
 --
 -- Name: sent_par_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX sent_par_idx ON nlpg.sent USING btree (par);
-
+create index sent_par_idx on nlpg.sent using btree (par);
 
 --
 -- Name: sent_string_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX sent_string_idx ON nlpg.sent USING btree (string);
-
+create index sent_string_idx on nlpg.sent using btree (string);
 
 --
 -- Name: word_dep_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX word_dep_idx ON nlpg.word USING btree (dep);
-
+create index word_dep_idx on nlpg.word using btree (dep);
 
 --
 -- Name: word_head_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX word_head_idx ON nlpg.word USING btree (head);
-
+create index word_head_idx on nlpg.word using btree (head);
 
 --
 -- Name: word_i_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX word_i_idx ON nlpg.word USING btree (i);
-
+create index word_i_idx on nlpg.word using btree (i);
 
 --
 -- Name: word_lexeme_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX word_lexeme_idx ON nlpg.word USING btree (lexeme);
-
+create index word_lexeme_idx on nlpg.word using btree (lexeme);
 
 --
 -- Name: word_sent_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-
-CREATE INDEX word_sent_idx ON nlpg.word USING btree (sent);
-
+create index word_sent_idx on nlpg.word using btree (sent);
 
 --
 -- Name: morph jsonize_feats; Type: TRIGGER; Schema: nlpg; Owner: -
 --
-
-CREATE TRIGGER jsonize_feats AFTER INSERT OR UPDATE OF feats ON nlpg.morph FOR EACH ROW EXECUTE FUNCTION nlpg.feats_to_json();
-
+create trigger jsonize_feats
+    after insert or update of feats on nlpg.morph
+    for each row
+    execute function nlpg.feats_to_json ();
 
 --
 -- Name: lexeme lexeme_lemma_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.lexeme
-    ADD CONSTRAINT lexeme_lemma_fkey FOREIGN KEY (lemma) REFERENCES nlpg.lemma(id);
-
+alter table only nlpg.lexeme
+    add constraint lexeme_lemma_fkey foreign key (lemma) references nlpg.lemma (id);
 
 --
 -- Name: lexeme lexeme_morph_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.lexeme
-    ADD CONSTRAINT lexeme_morph_fkey FOREIGN KEY (morph) REFERENCES nlpg.morph(id);
-
+alter table only nlpg.lexeme
+    add constraint lexeme_morph_fkey foreign key (morph) references nlpg.morph (id);
 
 --
 -- Name: lexeme lexeme_pos_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.lexeme
-    ADD CONSTRAINT lexeme_pos_fkey FOREIGN KEY (pos) REFERENCES nlpg.pos(id);
-
+alter table only nlpg.lexeme
+    add constraint lexeme_pos_fkey foreign key (pos) references nlpg.pos (id);
 
 --
 -- Name: sent sent_par_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.sent
-    ADD CONSTRAINT sent_par_fkey FOREIGN KEY (par) REFERENCES nlpg.par(id);
-
+alter table only nlpg.sent
+    add constraint sent_par_fkey foreign key (par) references nlpg.par (id);
 
 --
 -- Name: token token_sent_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.token
-    ADD CONSTRAINT token_sent_fkey FOREIGN KEY (sent) REFERENCES nlpg.sent(id);
-
+alter table only nlpg.token
+    add constraint token_sent_fkey foreign key (sent) references nlpg.sent (id);
 
 --
 -- Name: word word_dep_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.word
-    ADD CONSTRAINT word_dep_fkey FOREIGN KEY (dep) REFERENCES nlpg.dep(id);
-
+alter table only nlpg.word
+    add constraint word_dep_fkey foreign key (dep) references nlpg.dep (id);
 
 --
 -- Name: word word_lexeme_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.word
-    ADD CONSTRAINT word_lexeme_fkey FOREIGN KEY (lexeme) REFERENCES nlpg.lexeme(id);
-
+alter table only nlpg.word
+    add constraint word_lexeme_fkey foreign key (lexeme) references nlpg.lexeme (id);
 
 --
 -- Name: word word_sent_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-
-ALTER TABLE ONLY nlpg.word
-    ADD CONSTRAINT word_sent_fkey FOREIGN KEY (sent) REFERENCES nlpg.sent(id);
-
+alter table only nlpg.word
+    add constraint word_sent_fkey foreign key (sent) references nlpg.sent (id);
 
 -- 2025-04-21
-CREATE OR REPLACE VIEW nlpg.word_ AS
- SELECT sent.string,
-    sent.id AS sent,
+create or replace view nlpg.word_ as
+select
+    sent.string,
+    sent.id as sent,
     sent.par,
     word.i,
     word.s,
@@ -899,10 +812,10 @@ CREATE OR REPLACE VIEW nlpg.word_ AS
     word.idx,
     word.len,
     lexeme.norm,
-    lemma.str AS lemma,
-    pos.name AS pos,
+    lemma.str as lemma,
+    pos.name as pos,
     word.head,
-    dep.name AS dep,
+    dep.name as dep,
     morph.number,
     morph.mood,
     morph.verbform,
@@ -916,14 +829,14 @@ CREATE OR REPLACE VIEW nlpg.word_ AS
     morph.definite,
     morph.tense,
     morph.reflex
-   FROM nlpg.word
-     JOIN nlpg.sent ON sent.id = word.sent
-     JOIN nlpg.lexeme ON lexeme.id = word.lexeme
-     JOIN nlpg.lemma ON lemma.id = lexeme.lemma
-     JOIN nlpg.pos ON pos.id = lexeme.pos
-     JOIN nlpg.morph ON morph.id = lexeme.morph
-     JOIN nlpg.dep ON dep.id = word.dep;
-
+from
+    nlpg.word
+    join nlpg.sent on sent.id = word.sent
+    join nlpg.lexeme on lexeme.id = word.lexeme
+    join nlpg.lemma on lemma.id = lexeme.lemma
+    join nlpg.pos on pos.id = lexeme.pos
+    join nlpg.morph on morph.id = lexeme.morph
+    join nlpg.dep on dep.id = word.dep;
 
 -- 2025-04-21
 create or replace view nlpg.token_ as
@@ -966,7 +879,6 @@ select
 from
     only nlpg.token
     join nlpg.sent on sent.id = token.sent;
-
 
 -- 2025-04-21
 create or replace function nlpg.tokenandtag (
@@ -1033,8 +945,6 @@ create or replace function nlpg.tokenandtag (
         idxxml
 $$;
 
-
 --
 -- PostgreSQL database dump complete
 --
-

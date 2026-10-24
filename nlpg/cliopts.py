@@ -1,7 +1,7 @@
-from .util import CallableDict
-from .schema import SCHEMA_OPTS
 from argparse import FileType
 
+from .schema import SCHEMA_OPTS
+from .util import CallableDict
 
 pos_many_str = CallableDict(nargs="*", action="store", type=str)
 pos_str = CallableDict(action="store", type=str)

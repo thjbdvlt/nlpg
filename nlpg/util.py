@@ -1,8 +1,10 @@
+from typing import Callable, Union
+
+import tqdm
 from psycopg import Cursor
 from psycopg.errors import Diagnostic
 from psycopg.sql import SQL, Identifier
-from typing import Callable, Union
-import tqdm
+
 from .schema import SCHEMA
 
 
