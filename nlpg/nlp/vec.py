@@ -14,13 +14,16 @@ def itervec(vectors):
 
 def copyvec(
     conn: Connection,
-    file: str,
+    file: str | KeyedVectors,
     schema: str,
     table: str,
     binary: bool = True,
     **_,
 ):
-    vectors = KeyedVectors.load_word2vec_format(file, binary=binary)
+    if isinstance(file, KeyedVectors):
+        vectors = file
+    else:
+        vectors = KeyedVectors.load_word2vec_format(file, binary=binary)
     dims = Literal(int(vectors.vector_size))
     conn.execute("create extension if not exists vector")
     conn.execute("load 'vector'")

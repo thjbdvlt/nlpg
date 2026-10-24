@@ -11,6 +11,7 @@ dependencies = [
     "tqdm",
     "nh3",
     "lxml",
+    "pgvector",
 ]
 
 [project.scripts]
