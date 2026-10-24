@@ -115,31 +115,6 @@ inherits (
 );
 
 --
--- Name: has_aux(nlpg.word, integer); Type: FUNCTION; Schema: nlpg; Owner: -
---
-create function nlpg.has_aux (
-    nlpg.word,
-    n integer
-)
-    returns nlpg.word
-    language sql
-    as $_$
-    select
-        m2
-    from
-        word m2
-        join lexeme x2 on m2.lexeme = x2.id
-        join pos n on n.id = x2.pos
-        join dep f on f.id = m2.dep
-    where
-        $1.string = m2.string
-        and $1.i = m2.head
-        and (n.name in ('aux', 'verb')
-            or f.name like 'aux:%')
-    limit $2
-$_$;
-
---
 -- Name: has_head(nlpg.word); Type: FUNCTION; Schema: nlpg; Owner: -
 --
 create function nlpg.has_head (
@@ -171,16 +146,14 @@ create function nlpg.insert_annotations (
 begin
     /* lemmas */
     raise info 'Inserting lemmas.';
-    insert into lemma (str)
-    select distinct
-        lemma
-    from
+    insert into lemma (str, pos)
+    select distinct lemma, pos from
         _textobj
     where
         type = 1
     except
     select distinct
-        str
+        str, pos
     from
         lemma;
 
@@ -201,10 +174,9 @@ begin
 
     /* Lexemes */
     raise info 'Inserting lexemes.';
-    insert into lexeme (norm, pos, lemma, morph)
+    insert into lexeme (norm, lemma, morph)
     select distinct
         i.norm,
-        i.pos,
         l.id,
         m.id
     from
@@ -216,7 +188,6 @@ begin
     except
     select distinct
         x.norm,
-        x.pos,
         x.lemma,
         x.morph
     from
@@ -273,15 +244,11 @@ begin
         i.head
     from
         _textobj i
-        join lemma l on l.str = i.lemma
+        join lemma l on l.str = i.lemma and l.pos = i.pos
         join morph m on m.feats = i.morph
-        join lexeme x on x.pos = i.pos
-            and x.norm = i.norm
+        join lexeme x on x.norm = i.norm
             and l.id = x.lemma
             and x.morph = m.id
-            -- AND i.morph = x.morph
-            -- TODO: par_i
-            -- FIXME
         join par p on p.i = i.par_i
             and p.string = i.text_id
         join sent s on s.string = i.text_id
@@ -375,6 +342,7 @@ alter table nlpg.dep
 --
 create table nlpg.lemma (
     id integer not null,
+    pos smallint not null,
     str text not null
 );
 
@@ -384,7 +352,6 @@ create table nlpg.lemma (
 create table nlpg.lexeme (
     id integer not null,
     lemma integer not null,
-    pos smallint not null,
     morph smallint not null,
     norm text not null
 );
@@ -586,7 +553,7 @@ alter table only nlpg.lemma
 -- Name: lemma lemma_str_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
 alter table only nlpg.lemma
-    add constraint lemma_str_key unique (str);
+    add constraint lemma_str_pos_key unique (str, pos);
 
 --
 -- Name: lexeme lexeme_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
@@ -598,7 +565,7 @@ alter table only nlpg.lexeme
 -- Name: lexeme lexeme_uniq; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
 alter table only nlpg.lexeme
-    add constraint lexeme_uniq unique (lemma, norm, pos, morph);
+    add constraint lexeme_uniq unique (lemma, norm, morph);
 
 --
 -- Name: morph morph_feats_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
@@ -675,9 +642,9 @@ create index lexeme_morph_idx on nlpg.lexeme using btree (morph);
 create index lexeme_norm_idx on nlpg.lexeme using btree (norm);
 
 --
--- Name: lexeme_pos_idx; Type: INDEX; Schema: nlpg; Owner: -
+-- Name: lemma_pos_idx; Type: INDEX; Schema: nlpg; Owner: -
 --
-create index lexeme_pos_idx on nlpg.lexeme using btree (pos);
+create index lemma_pos_idx on nlpg.lemma using btree (pos);
 
 --
 -- Name: morph_feats_idx; Type: INDEX; Schema: nlpg; Owner: -
@@ -765,10 +732,10 @@ alter table only nlpg.lexeme
     add constraint lexeme_morph_fkey foreign key (morph) references nlpg.morph (id);
 
 --
--- Name: lexeme lexeme_pos_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
+-- Name: lexeme lemma_pos_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
-alter table only nlpg.lexeme
-    add constraint lexeme_pos_fkey foreign key (pos) references nlpg.pos (id);
+alter table only nlpg.lemma
+    add constraint lemma_pos_fkey foreign key (pos) references nlpg.pos (id);
 
 --
 -- Name: sent sent_par_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
@@ -834,7 +801,7 @@ from
     join nlpg.sent on sent.id = word.sent
     join nlpg.lexeme on lexeme.id = word.lexeme
     join nlpg.lemma on lemma.id = lexeme.lemma
-    join nlpg.pos on pos.id = lexeme.pos
+    join nlpg.pos on pos.id = lemma.pos
     join nlpg.morph on morph.id = lexeme.morph
     join nlpg.dep on dep.id = word.dep;
 
@@ -859,7 +826,7 @@ from
     join nlpg.sent on sent.id = word.sent
     join nlpg.lexeme on lexeme.id = word.lexeme
     join nlpg.lemma on lemma.id = lexeme.lemma
-    join nlpg.pos on pos.id = lexeme.pos
+    join nlpg.pos on pos.id = lemma.pos
     join nlpg.dep on dep.id = word.dep
 union
 select
@@ -919,8 +886,8 @@ create or replace function nlpg.tokenandtag (
             nlpg.word
             join nlpg.sent on sent.id = word.sent
             join nlpg.lexeme on lexeme.id = word.lexeme
-            join nlpg.pos on pos.id = lexeme.pos
             join nlpg.lemma on lemma.id = lexeme.lemma
+            join nlpg.pos on pos.id = lemma.pos
         where
             sent.string = $1
         union

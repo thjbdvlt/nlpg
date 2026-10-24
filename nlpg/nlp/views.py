@@ -54,7 +54,7 @@ from
     join sent on sent.id = word.sent
     join lexeme on lexeme.id = word.lexeme
     join lemma on lemma.id = lexeme.lemma
-    join pos on pos.id = lexeme.pos
+    join pos on pos.id = lemma.pos
     join morph on morph.id = lexeme.morph
     join dep on dep.id = word.dep;
     """),
@@ -82,7 +82,7 @@ from
     join sent on sent.id = word.sent
     join lexeme on lexeme.id = word.lexeme
     join lemma on lemma.id = lexeme.lemma
-    join pos on pos.id = lexeme.pos
+    join pos on pos.id = lemma.pos
     join dep on dep.id = word.dep
 union
 select
@@ -116,8 +116,8 @@ SELECT
     {}
 FROM
     lexeme
-    JOIN pos ON pos.id = lexeme.pos
     JOIN lemma ON lemma.id = lexeme.lemma
+    JOIN pos ON pos.id = lemma.pos
     JOIN morph ON morph.id = lexeme.morph
     """),
     )
