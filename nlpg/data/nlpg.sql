@@ -149,7 +149,7 @@ begin
     /* lemmas */
     raise info 'Inserting lemmas.';
     insert into lemma (
-        str,
+        lemma,
         pos)
     select distinct
         lemma,
@@ -160,7 +160,7 @@ begin
         type = 1
     except
     select distinct
-        str,
+        lemma,
         pos
     from
         lemma;
@@ -193,7 +193,7 @@ begin
         m.id
     from
         _textobj i
-        join lemma l on l.str = i.lemma
+        join lemma l on l.lemma = i.lemma
         join morph m on m.feats = i.morph
     where
         i.type = 1
@@ -249,7 +249,7 @@ begin
         i.head
     from
         _textobj i
-        join lemma l on l.str = i.lemma
+        join lemma l on l.lemma = i.lemma
             and l.pos = i.pos
         join morph m on m.feats = i.morph
         join lexeme x on x.norm = i.norm
@@ -345,8 +345,8 @@ alter table nlpg.dep
 --
 create table nlpg.lemma (
     id integer not null,
-    pos smallint not null,
-    str text not null
+    lemma text not null,
+    pos smallint not null
 );
 
 --
@@ -381,7 +381,19 @@ create table nlpg.morph (
     poss text
 );
 
---
+create extension ltree schema nlpg;
+
+load 'ltree';
+
+create table nlpg.synset (
+    lemma int not null primary key,
+    label text not null,
+    definition text,
+    examples text[],
+    lemmas text[],
+    hypernym_paths nlpg.ltree[]
+);
+
 -- Name: pos; Type: TABLE; Schema: nlpg; Owner: -
 --
 create table nlpg.pos (
@@ -517,10 +529,10 @@ alter table only nlpg.lemma
     add constraint lemma_pkey primary key (id);
 
 --
--- Name: lemma lemma_str_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
+-- Name: lemma lemma_lemma_key; Type: CONSTRAINT; Schema: nlpg; Owner: -
 --
 alter table only nlpg.lemma
-    add constraint lemma_str_pos_key unique (str, pos);
+    add constraint lemma_lemma_pos_key unique (lemma, pos);
 
 --
 -- Name: lexeme lexeme_pkey; Type: CONSTRAINT; Schema: nlpg; Owner: -
@@ -670,6 +682,9 @@ create trigger jsonize_feats
 alter table only nlpg.lexeme
     add constraint lexeme_lemma_fkey foreign key (lemma) references nlpg.lemma (id);
 
+alter table only nlpg.synset
+    add constraint synset_lemma_fkey foreign key (lemma) references nlpg.lemma (id);
+
 --
 -- Name: lexeme lexeme_morph_fkey; Type: FK CONSTRAINT; Schema: nlpg; Owner: -
 --
@@ -717,7 +732,7 @@ select
     word.idx,
     word.len,
     lexeme.norm,
-    lemma.str as lemma,
+    lemma.lemma as lemma,
     pos.name as pos,
     word.head,
     dep.name as dep,
@@ -754,7 +769,7 @@ select
     word.idx,
     word.len,
     lexeme.norm,
-    lemma.str as lemma,
+    lemma.lemma as lemma,
     pos.name as pos,
     word.head,
     dep.name as dep
@@ -814,7 +829,7 @@ create or replace function nlpg.tokenandtag (
         select
             word.s,
             word.tspace,
-            lemma.str,
+            lemma.lemma,
             pos.name as pos,
             word.idx as idxtext,
             word.idx as idxxml

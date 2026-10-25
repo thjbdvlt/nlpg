@@ -41,3 +41,24 @@ def copyvec(
                 copy.write_row(i)
         stmt = SQL("create index on {} (key)").format(table)
         cur.execute(stmt)
+
+
+def copy_vec_lemma(conn: Connection, file: str | KeyedVectors, binary: bool = True, **_):
+    vectors = (
+        file
+        if isinstance(file, KeyedVectors)
+        else KeyedVectors.load_word2vec_format(file, binary=binary)
+    )
+    conn.execute("create extension if not exists vector")
+    conn.execute("load 'vector'")
+    register_vector(conn)
+    with conn.cursor() as cur:
+        cur.execute("select lemma from lemma")
+        lemmas = [i[0] for i in cur.fetchall()]
+        lemmas = [i for i in lemmas if i in vectors]
+        stmt = SQL("alter table nlpg.lemma add column vector vector({})")
+        stmt = stmt.format(Literal(int(vectors.vector_size)))
+        cur.execute(stmt)
+        data = [(vectors[i], i) for i in lemmas]
+        cur.executemany("update nlpg.lemma set vector = %s where lemma = %s", data)
+        stmt = SQL("create index on lemma (vector)")

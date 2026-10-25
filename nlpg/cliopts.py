@@ -59,6 +59,9 @@ opt_groups = {
             ),
         ],
     ],
+    "wordnet": [
+        [["-l", "--lang"], str_opt(default="eng")],
+    ],
 }
 
 opt_cmds = {
@@ -67,5 +70,6 @@ opt_cmds = {
     "copy-vec": ["copy-vec", "connect"],
     "schema": ["schema", "connect"],
     "view": ["connect"],
+    "wordnet": ["wordnet", "connect"],
     "xml": ["connect"],
 }

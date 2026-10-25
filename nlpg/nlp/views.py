@@ -37,7 +37,7 @@ select
     word.idx,
     word.len,
     lexeme.norm as norm,
-    lemma.str as lemma,
+    lemma.lemma as lemma,
     pos.name as pos,
     word.head as head,
     dep.name as dep,
@@ -65,7 +65,7 @@ select
     word.idx,
     word.len,
     lexeme.norm as norm,
-    lemma.str as lemma,
+    lemma.lemma as lemma,
     pos.name as pos,
     word.head as head,
     dep.name as dep
@@ -102,7 +102,7 @@ from
 SELECT
     lexeme.id,
     lexeme.norm,
-    lemma.str AS lemma,
+    lemma.lemma AS lemma,
     pos.name AS pos,
     {}
 FROM

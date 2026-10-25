@@ -37,6 +37,8 @@ helper = {
     "xml": "Make XML from texts.",
     # copy-vec
     "copy-vec": "Copy word embeddings into a table.",
+    # wordnet
+    "wordnet": "Add hypernym paths, lemmas and definition from a WordNet.",
 }
 
 
@@ -82,6 +84,21 @@ def cli_copy_vec(args: Namespace) -> None:
 
     try:
         copyvec(conn, **vars(args))
+    except Exception:
+        conn.close()
+        raise
+    else:
+        conn.commit()
+        conn.close()
+
+
+def cli_wordnet(args: Namespace):
+    """Update the table `nlpg.synset` with WordNet data."""
+    from .nlp.wordnet import synsets
+
+    conn = cli_connect(args)
+    try:
+        synsets(conn, **vars(args))
     except Exception:
         conn.close()
         raise
@@ -173,6 +190,7 @@ def make_cli_parser():
         ("view", cli_view),
         ("xml", cli_xml),
         ("copy-vec", cli_copy_vec),
+        ("wordnet", cli_wordnet),
     ]:
         cmd = subparsers.add_parser(
             name,
