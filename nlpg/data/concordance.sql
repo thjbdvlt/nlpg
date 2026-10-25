@@ -1,4 +1,4 @@
-create or replace function public.concord (
+create or replace function nlpg.concord (
     word_,
     integer default 50
 )

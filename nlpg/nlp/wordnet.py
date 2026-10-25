@@ -10,13 +10,13 @@ re_nonw = re.compile(r"[^\w]+")
 
 
 def make_synset_label(synset: Synset) -> str:
-    name = synset.name().strip()
+    # TODO: more option for labeling
+    name = synset.name().strip().split(".")[0]
     return re_nonw.sub("_", name)
 
 
 def make_ltree(paths: list[Synset]) -> str:
     paths = [make_synset_label(i) for i in paths]
-    paths = reversed(paths)
     return ".".join(paths)
 
 
@@ -30,7 +30,8 @@ def get_synset(lemma: str, pos: str, lang: str = "en") -> Synset | None:
 
 def synset_to_columns(lemma_id: int, synset: Synset) -> dict:
     paths = synset.hypernym_paths()
-    paths = [p + [synset] for p in paths]
+    paths = [p for p in paths if p]
+    paths = [p + [synset] if synset not in p else p for p in paths]
     paths = [make_ltree(p) for p in paths]
     return {
         "lemma": lemma_id,
@@ -43,6 +44,7 @@ def synset_to_columns(lemma_id: int, synset: Synset) -> dict:
 
 
 def synsets(conn: Connection, lang="eng", **_):
+    # TODO: more options, e.g. keep "_n_01" or keep all lemmas
     with conn.cursor() as cur:
         cur.execute(
             "SELECT l.id, l.lemma, p.name FROM lemma l JOIN pos p ON p.id = l.pos"

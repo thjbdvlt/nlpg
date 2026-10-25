@@ -41,12 +41,14 @@ select
     pos.name as pos,
     word.head as head,
     dep.name as dep,
+    synset.hypernym_paths as hypaths,
     {}
 from
     word
     join sent on sent.id = word.sent
     join lexeme on lexeme.id = word.lexeme
     join lemma on lemma.id = lexeme.lemma
+    join synset on synset.lemma = lemma.id
     join pos on pos.id = lemma.pos
     join morph on morph.id = lexeme.morph
     join dep on dep.id = word.dep;
