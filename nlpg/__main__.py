@@ -35,9 +35,7 @@ helper = {
     "--globexpr": "Add the results of a GLOBEXPR to files. Usefull if the number of files to insert is too high for the command line.",
     # html
     "xml": "Make XML from texts.",
-    # copy-vec
     "copy-vec": "Copy word embeddings into a table.",
-    # wordnet
     "wordnet": "Add hypernym paths, lemmas and definition from a WordNet.",
 }
 

@@ -1,3 +1,4 @@
+import gensim.downloader
 from gensim.models import KeyedVectors
 from pgvector.psycopg import register_vector
 from psycopg import Connection
@@ -12,53 +13,63 @@ def itervec(vectors):
         yield (k, v)
 
 
-def copyvec(
-    conn: Connection,
+def load(
     file: str | KeyedVectors,
-    schema: str,
-    table: str,
-    binary: bool = True,
+    gensim_download: bool,
+    binary: bool,
     **_,
-):
+) -> KeyedVectors:
+    if gensim_download:
+        return gensim.downloader.load(file)
     if isinstance(file, KeyedVectors):
-        vectors = file
-    else:
-        vectors = KeyedVectors.load_word2vec_format(file, binary=binary)
+        return file
+    return KeyedVectors.load_word2vec_format(file, binary=binary)
+
+
+def copy_vec_all(conn: Connection, vectors: KeyedVectors, **_):
     dims = Literal(int(vectors.vector_size))
-    conn.execute("create extension if not exists vector")
-    conn.execute("load 'vector'")
-    register_vector(conn)
     with conn.cursor() as cur:
-        table = Identifier(schema, table)
-        stmt = SQL("create table {} (key text, vec vector({}))")
-        stmt = stmt.format(table, dims)
+        stmt = SQL("create table nlpg.vec (key text, vec vector({}))")
+        stmt = stmt.format(dims)
         cur.execute(stmt)
-        stmt = SQL("copy {} from stdin with (format binary)")
-        stmt = stmt.format(table)
+        stmt = SQL("copy nlpg.vec from stdin with (format binary)")
         with cur.copy(stmt) as copy:
             copy.set_types(["text", "vector"])
             for i in tqdm(itervec(vectors)):
                 copy.write_row(i)
-        stmt = SQL("create index on {} (key)").format(table)
+        cur.execute(SQL("create index on nlpg.vec (key)"))
+
+
+def copy_vec_lemma(conn: Connection, table: str, vectors: KeyedVectors, **_):
+    column = {"lemma": "lemma", "lexeme": "norm"}[table]
+    column, table = Identifier(column), Identifier(table)
+    with conn.cursor() as cur:
+        # fetch lemma or norms, and filter to keep only ones with vectors
+        cur.execute(SQL("select {} from {}").format(column, table))
+        lemmas = [i[0] for i in cur.fetchall()]
+        lemmas = [i for i in lemmas if i in vectors]
+        # drop existing `vector` columns and recreate it.
+        # this is necessary because the dimensions must differ.
+        stmt = SQL("alter table nlpg.{} drop column if exists vector").format(table)
         cur.execute(stmt)
+        dims = Literal(int(vectors.vector_size))
+        stmt = SQL("alter table nlpg.{} add column vector vector({})")
+        cur.execute(stmt.format(table, dims))
+        # update the table
+        stmt = SQL("update nlpg.{} set vector = %s where {} = %s").format(table, column)
+        cur.executemany(stmt, [(vectors[i], i) for i in lemmas])
+        # build the index
+        cur.execute(SQL("create index on {} (vector)").format(table))
 
 
-def copy_vec_lemma(conn: Connection, file: str | KeyedVectors, binary: bool = True, **_):
-    vectors = (
-        file
-        if isinstance(file, KeyedVectors)
-        else KeyedVectors.load_word2vec_format(file, binary=binary)
-    )
+def copyvec(conn, table, *args, **kwargs):
     conn.execute("create extension if not exists vector")
     conn.execute("load 'vector'")
     register_vector(conn)
-    with conn.cursor() as cur:
-        cur.execute("select lemma from lemma")
-        lemmas = [i[0] for i in cur.fetchall()]
-        lemmas = [i for i in lemmas if i in vectors]
-        stmt = SQL("alter table nlpg.lemma add column vector vector({})")
-        stmt = stmt.format(Literal(int(vectors.vector_size)))
-        cur.execute(stmt)
-        data = [(vectors[i], i) for i in lemmas]
-        cur.executemany("update nlpg.lemma set vector = %s where lemma = %s", data)
-        stmt = SQL("create index on lemma (vector)")
+    if table in ["lemma", "lexeme"]:
+        func = copy_vec_lemma
+    elif table == "vec":
+        func = copy_vec_all
+    else:
+        raise ValueError("`table` argument must be 'lemma', 'vec' or 'lexeme'.")
+    func(conn=conn, vectors=load(**kwargs), table=table, *args, **kwargs)

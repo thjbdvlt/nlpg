@@ -42,9 +42,10 @@ opt_groups = {
     ],
     "copy-vec": [
         [["file"], pos_str],
-        [["-t", "--table"], str_opt(default="vec")],
+        [["-t", "--table"], str_opt(default="lexeme")],
         [["-s", "--schema"], str_opt(default="nlpg")],
         [["-b", "--binary"], store_true],
+        [["-g", "--gensim-download"], store_true],
     ],
     "schema": [
         [
