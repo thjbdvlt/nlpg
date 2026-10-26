@@ -48,10 +48,10 @@ from
     join sent on sent.id = word.sent
     join lexeme on lexeme.id = word.lexeme
     join lemma on lemma.id = lexeme.lemma
-    join synset on synset.lemma = lemma.id
     join pos on pos.id = lemma.pos
+    join dep on dep.id = word.dep
     join morph on morph.id = lexeme.morph
-    join dep on dep.id = word.dep;
+    left join synset on synset.lemma = lemma.id;
     """),
     )
     create_view_morph_as_columns(
