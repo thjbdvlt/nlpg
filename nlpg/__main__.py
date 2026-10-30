@@ -37,6 +37,7 @@ helper = {
     "xml": "Make XML from texts.",
     "copy-vec": "Copy word embeddings into a table.",
     "wordnet": "Add hypernym paths, lemmas and definition from a WordNet.",
+    "stem": "Perform stemming on lemmas.",
 }
 
 
@@ -97,6 +98,21 @@ def cli_wordnet(args: Namespace):
     conn = cli_connect(args)
     try:
         synsets(conn, **vars(args))
+    except Exception:
+        conn.close()
+        raise
+    else:
+        conn.commit()
+        conn.close()
+
+
+def cli_stem(args: Namespace):
+    """Update the table `nlpg.synset` with WordNet data."""
+    from .nlp.stem import stem_lemmas
+
+    conn = cli_connect(args)
+    try:
+        stem_lemmas(conn, **vars(args))
     except Exception:
         conn.close()
         raise
@@ -189,6 +205,7 @@ def make_cli_parser():
         ("xml", cli_xml),
         ("copy-vec", cli_copy_vec),
         ("wordnet", cli_wordnet),
+        ("stem", cli_stem),
     ]:
         cmd = subparsers.add_parser(
             name,

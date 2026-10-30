@@ -38,6 +38,7 @@ select
     word.len,
     lexeme.norm as norm,
     lemma.lemma as lemma,
+    lemma.stem as stem,
     pos.name as pos,
     word.head as head,
     dep.name as dep,

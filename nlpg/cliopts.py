@@ -63,6 +63,10 @@ opt_groups = {
     "wordnet": [
         [["-l", "--lang"], str_opt(default="eng")],
     ],
+    "stem": [
+        [["-l", "--lang"], str_opt(default="english")],
+        [["-s", "--stemmer"], str_opt(default="snowball")],
+    ],
 }
 
 opt_cmds = {
@@ -72,5 +76,6 @@ opt_cmds = {
     "schema": ["schema", "connect"],
     "view": ["connect"],
     "wordnet": ["wordnet", "connect"],
+    "stem": ["stem", "connect"],
     "xml": ["connect"],
 }

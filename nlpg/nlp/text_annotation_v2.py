@@ -12,6 +12,7 @@ from ..schema import TABLE_ANNOTES
 from ..statements import make_copy_stmt
 from ..util import check_row_types, make_log_func_tqdm
 from .lookups import get_lookup_dep, get_lookup_pos
+from .stem import stem_lemmas
 
 TYPEID_WORD = 1
 TYPEID_NONWORD = 0
@@ -151,6 +152,7 @@ def annotate(
     dynamic_ncols: bool = False,
     batch_size: int = 1000,
     n_process: int = 1,
+    stem: bool = True,
     **kwargs,
 ):
     """Process texts from the database and send annotations back."""

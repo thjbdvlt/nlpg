@@ -346,7 +346,8 @@ alter table nlpg.dep
 create table nlpg.lemma (
     id integer not null,
     lemma text not null,
-    pos smallint not null
+    pos smallint not null,
+    stem text
 );
 
 --
