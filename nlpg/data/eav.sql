@@ -79,7 +79,6 @@ begin
         _ent e
         join eav.class c on c.name = e.class_name;
     -- Unfold relations.
-    -- TODO: ensure there's ALWAYS an "obj" and "type" fields.
     create temp table _relation_text as
     select
         id as sub,
@@ -88,6 +87,24 @@ begin
         _ent e,
         jsonb_to_recordset(e.relations) as r (type text,
         obj text);
+    -- We ensure that all relations have both a "type" and "obj" fields.
+    if (
+        select
+            count(*) > 0
+        from
+            _relation_text
+        where
+            obj is null) then
+        raise exception 'no `obj` field in relation';
+    elsif (
+            select
+                count(*) > 0
+            from
+                _relation_text
+            where
+                type is null) then
+        raise exception 'no `type` field in relation';
+    end if;
     -- Add relation types.
     insert into eav.relation_type (
         name)
