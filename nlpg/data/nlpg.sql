@@ -406,7 +406,7 @@ create table nlpg.pos (
 -- Name: sent; Type: TABLE; Schema: nlpg; Owner: -
 --
 create table nlpg.sent (
-    string integer not null,
+    string bigint not null,
     i integer not null,
     id integer not null
 );
@@ -482,7 +482,7 @@ create table nlpg.stopword (
 );
 
 create table nlpg.span (
-    string integer not null,
+    string bigint not null,
     id integer not null,
     idx integer not null,
     len integer not null,

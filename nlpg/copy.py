@@ -10,6 +10,8 @@ from psycopg.sql import SQL, Identifier
 from .schema import SCHEMA_EAV, TABLE_IMPORT
 from .xmltotext import tags_to_xtag
 
+# TODO: schema error e.g. missing "type" or "obj" in relation
+
 
 def _copy_from_json(copy: Copy, files: Iterator, dynamic_ncols: bool = False):
     """Copy from JSON files."""

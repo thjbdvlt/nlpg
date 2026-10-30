@@ -37,7 +37,7 @@ language plpgsql
 as $$
 declare
 begin
-    -- crée une table temporaire pour préparer l'insertion des entités, de leurs propriétés et de leurs relations. cette première table sépare les champs "id", "class", "relations" et "attributes", qui requierent tous des traitements différents.
+    -- Create a temporary table to prepare insertion of entities, properties and relations. This first table separate fields "id", "class", "relations" and "attributes" (i.e. everything else). All these fields require different processing.
     create temp table _ent as
     select
         nextval('eav.entity_id_seq') as id,
@@ -47,7 +47,7 @@ begin
         j - 'id' - 'class' - 'relations' as attributes
     from
         eav._entity;
-    -- ajoute les classs manquantes.
+    -- Add new classes.
     insert into eav.class (
         name)
     select distinct
@@ -59,7 +59,7 @@ begin
         name
     from
         eav.class;
-    -- ajoute les entités dans la lookup table.
+    -- Add entities in the lookup table.
     insert into eav._lookup_ent (
         id,
         import_id)
@@ -68,7 +68,7 @@ begin
         import_id
     from
         _ent;
-    -- ajoute les entités
+    -- Insert entities.
     insert into eav.entity (
         id,
         class)
@@ -78,7 +78,8 @@ begin
     from
         _ent e
         join eav.class c on c.name = e.class_name;
-    -- déplie les relations
+    -- Unfold relations.
+    -- TODO: ensure there's ALWAYS an "obj" and "type" fields.
     create temp table _relation_text as
     select
         id as sub,
@@ -87,7 +88,7 @@ begin
         _ent e,
         jsonb_to_recordset(e.relations) as r (type text,
         obj text);
-    -- ajoute les types de relations
+    -- Add relation types.
     insert into eav.relation_type (
         name)
     select distinct
@@ -99,7 +100,7 @@ begin
         name
     from
         eav.relation_type;
-    -- ajoute les relations
+    -- Add relations.
     insert into eav.relation (
         sub,
         type,
@@ -112,7 +113,7 @@ begin
         _relation_text r
         join eav._lookup_ent l2 on l2.import_id = r.obj
         join eav.relation_type y on y.name = r.type;
-    -- déplie les propriétés dans un format key/value (deux colonnes), ajoute le 'datatype' jsonb (string, array, object, number), duquel va dépendre la sous-tablede propriété dans laquelle chaque propriété va aller.
+    -- Unfold properties in key/value format (2 columns). Add 'datatype' from jsonb, so that we know in which table we must put each property.
     create temp table _attribute as
     select
         e.id as entity,
@@ -126,7 +127,7 @@ begin
     from
         _ent e,
         jsonb_each(e.attributes);
-    -- ajoute les types de propriétés
+    -- Add property types.
     insert into eav.attr_type (
         name)
     select distinct
@@ -138,7 +139,7 @@ begin
         name
     from
         eav.attr_type;
-    -- ajoute les strings (les propriétés de datatype string).
+    -- Add XML-encoded attributes.
     insert into eav.xml(
         entity, type, val)
     select
@@ -150,7 +151,7 @@ begin
         join eav.attr_type y on y.name = p.type_name
     where
         p.datatype = 'xml';
-    -- ajoute les strings (les propriétés de datatype string).
+    -- Add strings (i.e. attribute for datatype 'text').
     insert into eav.string (
         entity,
         type,
@@ -164,7 +165,7 @@ begin
         join eav.attr_type y on y.name = p.type_name
     where
         p.datatype = 'string';
-    -- ajoute les propriétés à valeur jsonb (array/object).
+    -- Add JSONB properties (array or objects).
     insert into eav.attr_jsonb (
         entity,
         type,
@@ -178,7 +179,7 @@ begin
         join eav.attr_type y on y.name = p.type_name
     where
         p.datatype in ('array', 'object');
-    -- ajoute les propriétés numériques entières.
+    -- Add integers numeric attributes.
     insert into eav.attr_int (
         entity,
         type,
@@ -193,7 +194,7 @@ begin
     where
         p.datatype = 'number'
         and not regexp_like (p.val ->> 0, '\.');
-    -- ajoute les propriétés numériques décimales.
+    -- Add float numeric attributes.
     insert into eav.attr_float (
         entity,
         type,
@@ -208,7 +209,7 @@ begin
     where
         p.datatype = 'number'
         and regexp_like (p.val ->> 0, '\.');
-    -- ajoute les propriétés numériques décimales.
+    -- Add attributes without values.
     insert into eav.attribute (
         entity,
         type)
@@ -220,11 +221,11 @@ begin
         join eav.attr_type y on y.name = p.type_name
     where
         p.datatype = 'null';
-    -- drop les tables temporaires,
+    -- Drop temporary tables.
     drop table _attribute;
     drop table _relation_text;
     drop table _ent;
-    -- vider la table d'importation.
+    -- Empty the import table.
     truncate eav._entity;
 end;
 $$;
@@ -399,7 +400,7 @@ alter table eav.relation_type
 -- Name: string; Type: TABLE; Schema: eav; Owner: -
 --
 create table eav.string (
-    id integer not null,
+    id bigint not null,
     val text
 )
 inherits (
